@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createGeminiProvider } from "./gemini";
 import { createMockProvider } from "./mock";
 import { createOpenAIProvider } from "./openai";
@@ -125,4 +125,35 @@ describe("getProvider", () => {
   it("refuses a provider without an API key", () => {
     expect(() => getProvider({ ...base, OPENAI_API_KEY: "" })).toThrow(ProviderError);
   });
+});
+
+describe("default fetch binding", () => {
+  // Workers reject `fetch` called as a method of anything but the global
+  // object. Production hit exactly this: the provider called `opts.fetch(...)`.
+  it("is enforced by the runtime", () => {
+    const holder = { f: fetch };
+    expect(() => holder.f("http://example.invalid/")).toThrow(/Illegal invocation/);
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  const replies: Record<string, unknown> = {
+    openai: { data: [{ b64_json: PIXELS_B64 }] },
+    gemini: { candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/png", data: PIXELS_B64 } }] } }] },
+  };
+
+  for (const id of ["openai", "gemini"] as const) {
+    it(`lets the ${id} provider call the global fetch`, async () => {
+      vi.spyOn(globalThis, "fetch").mockImplementation(function (this: unknown) {
+        if (this !== undefined && this !== globalThis) {
+          return Promise.reject(new TypeError("Illegal invocation: function called with incorrect `this` reference."));
+        }
+        return Promise.resolve(new Response(JSON.stringify(replies[id]), { headers: { "Content-Type": "application/json" } }));
+      });
+      const env = { IMAGE_PROVIDER: id, OPENAI_API_KEY: "k", GEMINI_API_KEY: "g", OPENAI_IMAGE_MODEL: "m", GEMINI_IMAGE_MODEL: "gm", IMAGE_QUALITY: "low" } as unknown as Env;
+
+      const out = await getProvider(env).generate({ prompt: "houbička" });
+      expect(out.bytes).toEqual(PIXELS);
+    });
+  }
 });

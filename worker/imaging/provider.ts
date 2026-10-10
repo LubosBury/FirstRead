@@ -41,7 +41,9 @@ export async function errorFromResponse(provider: string, res: Response): Promis
   return new ProviderError(MSG.failed, detail);
 }
 
-export function getProvider(env: Env, fetchImpl: typeof fetch = fetch): ImageProvider {
+// The wrapper matters: providers call it as `opts.fetch(...)`, and Workers
+// throw "Illegal invocation" when the global fetch runs with any other `this`.
+export function getProvider(env: Env, fetchImpl: typeof fetch = (input, init) => fetch(input, init)): ImageProvider {
   const quality = env.IMAGE_QUALITY || "medium";
   switch (env.IMAGE_PROVIDER) {
     case "mock":
