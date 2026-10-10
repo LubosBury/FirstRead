@@ -32,6 +32,7 @@ images.get("/images/:id", async (c) => {
   return new Response(obj.body, {
     headers: {
       "Content-Type": row.mime,
+      "X-Content-Type-Options": "nosniff",
       // Ids are never reused, so the bytes behind one never change.
       "Cache-Control": "private, max-age=31536000, immutable",
     },

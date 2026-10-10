@@ -3,7 +3,7 @@ import { z } from "zod";
 import { badRequest, notFound, type AppEnv } from "../app";
 import { completeGeneration, failGeneration, getBalance, InsufficientCreditsError, startGeneration } from "../credits";
 import { intVar } from "../env";
-import { getOwnedImage, publicImage, readImageBytes, saveImage } from "../images";
+import { getOwnedImage, publicImage, readImageBytes, saveImage, sniffImageMime } from "../images";
 import { buildPrompt } from "../imaging/prompts";
 import { getProvider, MSG, ProviderError, type ImageInput } from "../imaging/provider";
 
@@ -61,10 +61,13 @@ generations.post("/generations", async (c) => {
 
   try {
     const result = await provider.generate({ prompt: buildPrompt(slot, prompt, !!reference), reference });
+    // Stored and served with the type its bytes prove, not the one claimed.
+    const mime = sniffImageMime(result.bytes);
+    if (!mime) throw new ProviderError(MSG.failed, `${provider.id}: response is not a PNG/JPEG/WebP image`);
     const image = await saveImage(c.env, {
       userId: user.id,
       bytes: result.bytes,
-      mime: result.mime,
+      mime,
       origin: "generated",
       generationId,
       label: prompt.trim().slice(0, 120) || null,
