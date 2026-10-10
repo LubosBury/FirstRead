@@ -1,0 +1,12 @@
+# Copy to .dev.vars for local development (never commit .dev.vars).
+APP_URL=http://localhost:5173
+BETTER_AUTH_SECRET=change-me-to-a-long-random-string
+# Leave RESEND_API_KEY empty locally: magic links are printed to the console.
+RESEND_API_KEY=
+# mock | openai | gemini
+IMAGE_PROVIDER=mock
+OPENAI_API_KEY=
+GEMINI_API_KEY=
+# Comma-separated. Only these addresses can sign in; admins can grant credits.
+ALLOWED_EMAILS=you@example.com
+ADMIN_EMAILS=you@example.com

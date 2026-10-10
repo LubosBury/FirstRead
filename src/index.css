@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --color-canvas: #f7f5ef;
+  --color-surface: #ffffff;
+  --color-ink: #1d2422;
+  --color-muted: #66706c;
+  --color-line: #e3dfd3;
+  --color-brand: #1f6f5c;
+  --color-brand-ink: #ffffff;
+  --color-brand-soft: #e3f0eb;
+  --color-danger: #b42318;
+  --color-warn: #b54708;
+}
+
+html,
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}

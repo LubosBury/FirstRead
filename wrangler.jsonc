@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "firstread",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // The SPA is served as static assets; only /api/* reaches the Worker first.
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "firstread",
+      // Replace with the id printed by `wrangler d1 create firstread`.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "IMAGES", "bucket_name": "firstread-images" }],
+  // Refunds generations whose client disconnected mid-flight.
+  "triggers": { "crons": ["*/15 * * * *"] },
+  // Non-secret settings. Secrets (BETTER_AUTH_SECRET, RESEND_API_KEY,
+  // OPENAI_API_KEY, GEMINI_API_KEY, ALLOWED_EMAILS, ADMIN_EMAILS) go in via
+  // `wrangler secret put` in production and `.dev.vars` locally.
+  "vars": {
+    "APP_URL": "https://firstread.example.com",
+    "MAIL_FROM": "FirstRead <noreply@example.com>",
+    "WELCOME_CREDITS": "5",
+    "IMAGE_PROVIDER": "openai",
+    "OPENAI_IMAGE_MODEL": "gpt-image-2",
+    "GEMINI_IMAGE_MODEL": "gemini-2.5-flash-image",
+    "IMAGE_QUALITY": "medium",
+    "CREDIT_COST_MAIN": "1",
+    "CREDIT_COST_ICON": "1"
+  }
+}
