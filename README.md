@@ -65,9 +65,18 @@ npm test            # app unit tests (jsdom) + Worker integration tests (workerd
 
 The two email lists are secrets, not vars, so they never land in this public repo.
 
+## Production
+
+- **URL:** https://product-gnome.com (Workers custom domain; `workers_dev` is off so there is one origin for auth).
+- **Resources:** D1 `firstread` (WEUR), R2 `firstread-images` (WEUR), cron `*/15 * * * *`.
+- **Sender:** `prihlaseni@product-gnome.com`. The domain is verified in Resend.
+- **Secrets:** `BETTER_AUTH_SECRET` is set. The rest go in the dashboard: Workers → firstread → Settings → Variables and Secrets.
+
 ## Deploying to Cloudflare
 
-1. Run `npx wrangler login`.
+R2 must be enabled once per account in the dashboard (R2 Object Storage) before the bucket can be created.
+
+1. Run `npx wrangler login`. Or, in CI or a cloud session, set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 2. Create the database: `npx wrangler d1 create firstread`, then copy the printed `database_id` into `wrangler.jsonc`.
 3. Create the image bucket: `npx wrangler r2 bucket create firstread-images`.
 4. Apply the schema: `npm run db:migrate:remote`.
