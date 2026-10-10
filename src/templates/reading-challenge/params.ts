@@ -20,6 +20,8 @@ export const readingChallengeSchema = z.object({
   icons: z.array(z.string()).max(MAX_ICON_VARIANTS),
   seed: z.number().int(),
   jitter: z.boolean(),
+  /** Clean images to pure black outlines on transparent paper. */
+  lineArt: z.boolean(),
 });
 
 export type ReadingChallengeParams = z.infer<typeof readingChallengeSchema>;
@@ -43,5 +45,6 @@ export function defaultReadingChallengeParams(now: Date = new Date()): ReadingCh
     icons: [],
     seed: randomSeed(),
     jitter: true,
+    lineArt: true,
   };
 }
