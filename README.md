@@ -1,4 +1,4 @@
-# FirstRead
+# FirstReader
 
 Worksheet generator for first-grade reading lessons. The first template is the monthly **Čtenářská výzva** (reading challenge) sheet:
 
@@ -74,8 +74,8 @@ npm test            # app unit tests (jsdom) + Worker integration tests (workerd
 
 Optional second way in, next to the magic link. Setup, in the Apple Developer account (Certificates, Identifiers & Profiles):
 
-1. **App ID:** an App ID with the Sign in with Apple capability. It is the primary App ID the other two items hang off.
-2. **Services ID** (this is `APPLE_CLIENT_ID`, e.g. `com.product-gnome.firstread`): enable Sign in with Apple and configure it with:
+1. **App ID** (e.g. `com.firstreader.app`): an explicit App ID with the Sign in with Apple capability. It is the primary App ID the other two items hang off.
+2. **Services ID** (this is `APPLE_CLIENT_ID`, e.g. `com.firstreader.web`; it must differ from the App ID): enable Sign in with Apple and configure it with:
    - Domain: `product-gnome.com`
    - Return URL: `https://product-gnome.com/api/auth/callback/apple`
 3. **Key:** create a key with Sign in with Apple enabled, linked to the App ID. Download the `.p8` file (Apple lets you download it only once). Its Key ID is `APPLE_KEY_ID`.
