@@ -1,6 +1,15 @@
 import { Hono } from "hono";
-import { notFound, type AppEnv } from "../app";
-import { getOwnedImage, MAX_UPLOAD_BYTES, publicImage, saveImage, sniffImageMime, type ImageRow } from "../images";
+import { z } from "zod";
+import { badRequest, notFound, type AppEnv } from "../app";
+import {
+  getOwnedImage,
+  getReadableImage,
+  MAX_UPLOAD_BYTES,
+  publicImage,
+  saveImage,
+  sniffImageMime,
+  type ImageRow,
+} from "../images";
 
 export const images = new Hono<AppEnv>();
 
@@ -11,6 +20,23 @@ images.get("/images", async (c) => {
      WHERE i.user_id = ? ORDER BY i.created_at DESC LIMIT 500`,
   )
     .bind(c.get("user").id)
+    .all<ImageRow>();
+  return c.json(results.map(publicImage));
+});
+
+const sharedQuery = z.object({ slot: z.enum(["main", "icon"]).optional() });
+
+/** The free library. Uploads have no slot, so they show for both. */
+images.get("/shared-images", async (c) => {
+  const parsed = sharedQuery.safeParse(c.req.query());
+  if (!parsed.success) return badRequest(c, "Neznámý typ obrázku.");
+  const { results } = await c.env.DB.prepare(
+    `SELECT i.*, g.provider AS g_provider, g.model AS g_model, g.quality AS g_quality
+     FROM images i LEFT JOIN generations g ON g.id = i.generation_id
+     WHERE i.shared_at IS NOT NULL AND (?1 IS NULL OR g.slot IS NULL OR g.slot = ?1)
+     ORDER BY i.shared_at DESC LIMIT 500`,
+  )
+    .bind(parsed.data.slot ?? null)
     .all<ImageRow>();
   return c.json(results.map(publicImage));
 });
@@ -29,7 +55,7 @@ images.post("/images", async (c) => {
 });
 
 images.get("/images/:id", async (c) => {
-  const row = await getOwnedImage(c.env.DB, c.get("user").id, c.req.param("id"));
+  const row = await getReadableImage(c.env.DB, c.get("user").id, c.req.param("id"));
   if (!row) return notFound(c);
   const obj = await c.env.IMAGES.get(row.r2_key);
   if (!obj) return notFound(c);

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { badRequest, isAdmin, notFound, type AppEnv } from "../app";
 import { getAuth } from "../auth";
 import { grantCredits, InsufficientCreditsError } from "../credits";
+import { getOwnedImage, type ImageRow } from "../images";
 import { ENGINE_IDS, engineOptions } from "../imaging/engines";
 import { inviteMail, sendMail } from "../mail";
 import { resolveEngine, setDefaultEngine } from "../settings";
@@ -118,4 +119,25 @@ admin.put("/admin/settings", async (c) => {
   if (!parsed.success) return badRequest(c, "Neznámý model.");
   await setDefaultEngine(c.env.DB, parsed.data.defaultEngine, c.get("user").email);
   return c.json(await settings(c));
+});
+
+const shareBody = z.object({ shared: z.boolean() });
+
+/** Admins share their own pictures only. Delete stays the owner's takedown. */
+admin.put("/admin/images/:id/shared", async (c) => {
+  const parsed = shareBody.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return badRequest(c, "Chybí, jestli obrázek sdílet.");
+  const row = await getOwnedImage(c.env.DB, c.get("user").id, c.req.param("id"));
+  if (!row) return notFound(c);
+  const now = new Date().toISOString();
+  const updated = parsed.data.shared
+    ? await c.env.DB.prepare(
+        `UPDATE images SET shared_at = COALESCE(shared_at, ?1), first_shared_at = COALESCE(first_shared_at, ?1)
+         WHERE id = ?2 RETURNING *`,
+      )
+        .bind(now, row.id)
+        .first<ImageRow>()
+    : await c.env.DB.prepare("UPDATE images SET shared_at = NULL WHERE id = ? RETURNING *").bind(row.id).first<ImageRow>();
+  if (!updated) return notFound(c);
+  return c.json({ shared: !!updated.shared_at, everShared: !!updated.first_shared_at });
 });

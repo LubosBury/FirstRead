@@ -49,6 +49,10 @@ export type LibraryImage = {
   url: string;
   /** Which engine drew it; null for uploads. */
   source?: ImageSource | null;
+  /** In the free library now. */
+  shared: boolean;
+  /** Was ever shared, so other users' sheets may use it. */
+  everShared: boolean;
 };
 
 export type SheetSummary = { id: string; templateId: string; title: string; createdAt: string; updatedAt: string };
@@ -93,6 +97,9 @@ export const api = {
       body: file,
     }),
   deleteImage: (id: string) => request<void>(`/images/${id}`, { method: "DELETE" }),
+  sharedImages: (slot: "main" | "icon") => request<LibraryImage[]>(`/shared-images?slot=${slot}`),
+  setShared: (id: string, shared: boolean) =>
+    request<{ shared: boolean; everShared: boolean }>(`/admin/images/${id}/shared`, send("PUT", { shared })),
 
   generate: (slot: "main" | "icon", prompt: string, referenceImageId?: string | null, engine?: string) =>
     request<{ image: LibraryImage; source: ImageSource; balance: number }>(
