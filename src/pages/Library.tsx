@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Thumb } from "@/components/ImagePicker";
 import { Button } from "@/components/ui/button";
 import { api, ApiError, type LibraryImage } from "@/lib/api";
+import { describeSource } from "@/lib/imageSource";
 
 const ORIGIN = { upload: "nahraný", generated: "vygenerovaný" };
 
@@ -65,8 +66,15 @@ export function Library() {
             <li key={img.id}>
               <Thumb src={img.url} className="aspect-square w-full" />
               <div className="mt-1 flex items-start gap-1 text-xs">
-                <span className="flex-1 truncate text-muted" title={img.label ?? undefined}>
-                  {img.label ?? ORIGIN[img.origin]}
+                <span className="min-w-0 flex-1 text-muted">
+                  <span className="block truncate" title={img.label ?? undefined}>
+                    {img.label ?? ORIGIN[img.origin]}
+                  </span>
+                  {img.source && (
+                    <span className="block truncate text-[11px] opacity-80" title={describeSource(img.source)}>
+                      {describeSource(img.source)}
+                    </span>
+                  )}
                 </span>
                 <button type="button" aria-label="Smazat" onClick={() => remove(img)} className="text-muted hover:text-danger">
                   <Trash2 className="h-3.5 w-3.5" />

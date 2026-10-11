@@ -1,3 +1,4 @@
+import { getEngine, type EngineId } from "./engines";
 import { createGeminiProvider } from "./gemini";
 import { createMockProvider } from "./mock";
 import { createOpenAIProvider } from "./openai";
@@ -41,20 +42,31 @@ export async function errorFromResponse(provider: string, res: Response): Promis
   return new ProviderError(MSG.failed, detail);
 }
 
-// The wrapper matters: providers call it as `opts.fetch(...)`, and Workers
-// throw "Illegal invocation" when the global fetch runs with any other `this`.
-export function getProvider(env: Env, fetchImpl: typeof fetch = (input, init) => fetch(input, init)): ImageProvider {
-  const quality = env.IMAGE_QUALITY || "medium";
-  switch (env.IMAGE_PROVIDER) {
+type ProviderOptions = {
+  /** Admin-picked combination; overrides the configured default. */
+  engine?: EngineId;
+  fetch?: typeof fetch;
+};
+
+export function getProvider(env: Env, opts: ProviderOptions = {}): ImageProvider {
+  // The wrapper matters: providers call it as `opts.fetch(...)`, and Workers
+  // throw "Illegal invocation" when the global fetch runs with any other `this`.
+  const fetchImpl = opts.fetch ?? ((input, init) => fetch(input, init));
+  const engine = opts.engine ? getEngine(opts.engine) : undefined;
+  const providerId = engine?.provider ?? env.IMAGE_PROVIDER;
+  const quality = (engine && "quality" in engine ? engine.quality : env.IMAGE_QUALITY) || "medium";
+  const geminiModel = engine && "model" in engine ? engine.model : env.GEMINI_IMAGE_MODEL;
+
+  switch (providerId) {
     case "mock":
       return createMockProvider();
     case "gemini":
       if (!env.GEMINI_API_KEY) throw new ProviderError(MSG.config, "GEMINI_API_KEY is not set");
-      return createGeminiProvider({ apiKey: env.GEMINI_API_KEY, model: env.GEMINI_IMAGE_MODEL, fetch: fetchImpl });
+      return createGeminiProvider({ apiKey: env.GEMINI_API_KEY, model: geminiModel, fetch: fetchImpl });
     case "openai":
       if (!env.OPENAI_API_KEY) throw new ProviderError(MSG.config, "OPENAI_API_KEY is not set");
       return createOpenAIProvider({ apiKey: env.OPENAI_API_KEY, model: env.OPENAI_IMAGE_MODEL, quality, fetch: fetchImpl });
     default:
-      throw new ProviderError(MSG.config, `Unknown IMAGE_PROVIDER "${env.IMAGE_PROVIDER}"`);
+      throw new ProviderError(MSG.config, `Unknown IMAGE_PROVIDER "${providerId}"`);
   }
 }

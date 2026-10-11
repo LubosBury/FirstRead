@@ -1,3 +1,5 @@
+import type { ImageSource } from "./imageSource";
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -29,6 +31,8 @@ export type Me = {
   balance: number;
   isAdmin: boolean;
   costs: { main: number; icon: number };
+  /** Only for admins: engines to compare on the same prompt. */
+  engines?: { id: string; label: string }[];
 };
 
 export type LibraryImage = {
@@ -38,6 +42,8 @@ export type LibraryImage = {
   label: string | null;
   createdAt: string;
   url: string;
+  /** Which engine drew it; null for uploads. */
+  source?: ImageSource | null;
 };
 
 export type SheetSummary = { id: string; templateId: string; title: string; createdAt: string; updatedAt: string };
@@ -67,8 +73,11 @@ export const api = {
     }),
   deleteImage: (id: string) => request<void>(`/images/${id}`, { method: "DELETE" }),
 
-  generate: (slot: "main" | "icon", prompt: string, referenceImageId?: string | null) =>
-    request<{ image: LibraryImage; balance: number }>("/generations", send("POST", { slot, prompt, referenceImageId })),
+  generate: (slot: "main" | "icon", prompt: string, referenceImageId?: string | null, engine?: string) =>
+    request<{ image: LibraryImage; source: ImageSource; balance: number }>(
+      "/generations",
+      send("POST", { slot, prompt, referenceImageId, ...(engine && { engine }) }),
+    ),
 
   adminUsers: () => request<AdminUser[]>("/admin/users"),
   adminGrant: (email: string, amount: number, note: string) =>

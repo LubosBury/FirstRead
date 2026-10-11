@@ -8,6 +8,10 @@ export type ImageRow = {
   bytes: number;
   label: string | null;
   created_at: string;
+  /** Joined from generations when listing; absent on a freshly saved row. */
+  g_provider?: string | null;
+  g_model?: string | null;
+  g_quality?: string | null;
 };
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -34,6 +38,7 @@ export const publicImage = (r: ImageRow) => ({
   label: r.label,
   createdAt: r.created_at,
   url: `/api/images/${r.id}`,
+  source: r.g_provider ? { provider: r.g_provider, model: r.g_model ?? null, quality: r.g_quality ?? null } : null,
 });
 
 export async function saveImage(

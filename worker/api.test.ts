@@ -1,5 +1,5 @@
 import { createExecutionContext, createScheduledController, env, waitOnExecutionContext } from "cloudflare:test";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { MOCK_ICON_PNG_B64 } from "./imaging/fixtures";
 import { fromBase64 } from "./imaging/base64";
 import worker from "./index";
@@ -160,6 +160,73 @@ describe("generations", () => {
   it("validates the request", async () => {
     expect((await api("/generations", { ...json({ slot: "poster", prompt: "x" }), cookie: teacher })).status).toBe(400);
     expect((await api("/generations", { ...json({ slot: "icon", prompt: "  " }), cookie: teacher })).status).toBe(400);
+  });
+});
+
+describe("engine switch", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** Answers as the image APIs would, and records what the Worker sent. */
+  function fakeProviders() {
+    const calls: { url: string; body: string }[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input instanceof Request ? input.url : input);
+      calls.push({ url, body: typeof init?.body === "string" ? init.body : "" });
+      const reply = url.includes("openai.com")
+        ? { data: [{ b64_json: MOCK_ICON_PNG_B64 }], usage: { output_tokens: 1 } }
+        : { candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/png", data: MOCK_ICON_PNG_B64 } }] } }] };
+      return new Response(JSON.stringify(reply), { headers: { "Content-Type": "application/json" } });
+    });
+    return calls;
+  }
+
+  it("lists engines for admins only", async () => {
+    const forAdmin = (await (await api("/me", { cookie: admin })).json()) as { engines?: { id: string; label: string }[] };
+    expect(forAdmin.engines?.map((e) => e.id)).toContain("gemini-nano-banana-2.1");
+    const forTeacher = (await (await api("/me", { cookie: teacher })).json()) as { engines?: unknown };
+    expect(forTeacher.engines).toBeUndefined();
+  });
+
+  it("refuses an engine from a non-admin", async () => {
+    const res = await api("/generations", { ...json({ slot: "icon", prompt: "x", engine: "openai-low" }), cookie: teacher });
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects an unknown engine", async () => {
+    const res = await api("/generations", { ...json({ slot: "icon", prompt: "x", engine: "dall-e-1" }), cookie: admin });
+    expect(res.status).toBe(400);
+  });
+
+  it("generates with OpenAI at low quality for an admin", async () => {
+    await api("/admin/grant", { ...json({ email: "admin@example.com", amount: 10 }), cookie: admin });
+    const calls = fakeProviders();
+    const res = await api("/generations", { ...json({ slot: "icon", prompt: "houbička", engine: "openai-low" }), cookie: admin });
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { source: { provider: string; model: string; quality: string } };
+    expect(body.source).toEqual({ provider: "openai", model: env.OPENAI_IMAGE_MODEL, quality: "low" });
+    expect(calls[0].url).toBe("https://api.openai.com/v1/images/generations");
+    expect(JSON.parse(calls[0].body).quality).toBe("low");
+  });
+
+  it("generates with a chosen Gemini model for an admin", async () => {
+    const calls = fakeProviders();
+    const res = await api("/generations", {
+      ...json({ slot: "main", prompt: "medvídek", engine: "gemini-nano-banana-2.1" }),
+      cookie: admin,
+    });
+    expect(res.status).toBe(201);
+    expect(calls[0].url).toContain("/models/gemini-nano-banana-2.1:generateContent");
+    const body = (await res.json()) as { source: { provider: string; model: string } };
+    expect(body.source).toMatchObject({ provider: "gemini", model: "gemini-nano-banana-2.1" });
+  });
+
+  it("shows where each library image came from", async () => {
+    const list = (await (await api("/images", { cookie: admin })).json()) as {
+      origin: string;
+      source: { provider: string } | null;
+    }[];
+    expect(list.some((i) => i.source?.provider === "gemini")).toBe(true);
+    expect(list.filter((i) => i.origin === "upload").every((i) => i.source === null)).toBe(true);
   });
 });
 

@@ -2,9 +2,10 @@ import { ImagePlus, Library, Loader2, Sparkles, Trash2, Upload, Wand2 } from "lu
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { Label, Textarea } from "@/components/ui/input";
+import { Label, Select, Textarea } from "@/components/ui/input";
 import { useMe } from "@/hooks/useMe";
 import { api, ApiError, type LibraryImage } from "@/lib/api";
+import { describeSource, type ImageSource } from "@/lib/imageSource";
 import { credits } from "@/lib/plural";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +46,9 @@ export function ImagePicker({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<LibraryImage | null>(null);
+  const [resultSource, setResultSource] = useState<ImageSource | null>(null);
+  // Admin-only engine override; "" means the configured default.
+  const [engine, setEngine] = useState("");
   const [library, setLibrary] = useState<LibraryImage[] | null>(null);
   const [uploaded, setUploaded] = useState<LibraryImage | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -73,10 +77,12 @@ export function ImagePicker({
   async function generate() {
     setBusy(true);
     setError(null);
-    setResult(null);
+    // The previous result stays until a new one arrives: a failed retry (or a
+    // weaker engine in a comparison) must not cost the picture already paid for.
     try {
-      const out = await api.generate(preset, prompt, reference?.id);
+      const out = await api.generate(preset, prompt, reference?.id, engine || undefined);
       setResult(out.image);
+      setResultSource(out.source);
       setBalance(out.balance);
       setLibrary(null);
     } catch (e) {
@@ -167,13 +173,33 @@ export function ImagePicker({
             </p>
           </div>
 
+          {me?.engines && (
+            <div>
+              <Label htmlFor="engine">Model (jen pro správce)</Label>
+              <Select id="engine" value={engine} onChange={(e) => setEngine(e.target.value)}>
+                <option value="">Výchozí</option>
+                {me.engines.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+
           {result ? (
             <div className="space-y-3">
               <Thumb src={result.url} className="mx-auto h-56 w-56" />
+              {me?.engines && resultSource && (
+                <p className="text-center text-xs text-muted" data-testid="result-source">
+                  {describeSource(resultSource)}
+                </p>
+              )}
               <div className="flex flex-wrap justify-center gap-2">
                 <Button onClick={() => pick(result)}>Použít tento obrázek</Button>
                 <Button variant="secondary" onClick={generate} disabled={busy || short}>
-                  <Wand2 className="h-4 w-4" /> Zkusit znovu · {credits(cost)}
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} Zkusit znovu ·{" "}
+                  {credits(cost)}
                 </Button>
               </div>
             </div>

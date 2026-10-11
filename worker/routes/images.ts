@@ -5,7 +5,11 @@ import { getOwnedImage, MAX_UPLOAD_BYTES, publicImage, saveImage, sniffImageMime
 export const images = new Hono<AppEnv>();
 
 images.get("/images", async (c) => {
-  const { results } = await c.env.DB.prepare("SELECT * FROM images WHERE user_id = ? ORDER BY created_at DESC LIMIT 500")
+  const { results } = await c.env.DB.prepare(
+    `SELECT i.*, g.provider AS g_provider, g.model AS g_model, g.quality AS g_quality
+     FROM images i LEFT JOIN generations g ON g.id = i.generation_id
+     WHERE i.user_id = ? ORDER BY i.created_at DESC LIMIT 500`,
+  )
     .bind(c.get("user").id)
     .all<ImageRow>();
   return c.json(results.map(publicImage));

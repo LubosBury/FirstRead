@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createGeminiProvider } from "./gemini";
 import { createMockProvider } from "./mock";
 import { createOpenAIProvider } from "./openai";
+import { ENGINE_IDS } from "./engines";
 import { getProvider, ProviderError } from "./provider";
 
 type Call = { url: string; init: RequestInit };
@@ -156,4 +157,35 @@ describe("default fetch binding", () => {
       expect(out.bytes).toEqual(PIXELS);
     });
   }
+});
+
+describe("getProvider with an engine", () => {
+  const env = {
+    IMAGE_PROVIDER: "mock",
+    OPENAI_API_KEY: "k",
+    GEMINI_API_KEY: "g",
+    OPENAI_IMAGE_MODEL: "gpt-image-x",
+    GEMINI_IMAGE_MODEL: "gm",
+    IMAGE_QUALITY: "medium",
+  } as unknown as Env;
+
+  it("offers OpenAI at two qualities and two Gemini models", () => {
+    expect(ENGINE_IDS).toEqual(["openai-medium", "openai-low", "gemini-nano-banana-2.1", "gemini-3.1-flash-image"]);
+  });
+
+  it("overrides the configured provider and quality", () => {
+    const p = getProvider(env, { engine: "openai-low" });
+    expect([p.id, p.model, p.quality]).toEqual(["openai", "gpt-image-x", "low"]);
+    const m = getProvider(env, { engine: "openai-medium" });
+    expect([m.id, m.quality]).toEqual(["openai", "medium"]);
+  });
+
+  it("pins the Gemini model per engine", () => {
+    expect(getProvider(env, { engine: "gemini-nano-banana-2.1" }).model).toBe("gemini-nano-banana-2.1");
+    expect(getProvider(env, { engine: "gemini-3.1-flash-image" }).model).toBe("gemini-3.1-flash-image");
+  });
+
+  it("still needs the provider's API key", () => {
+    expect(() => getProvider({ ...env, GEMINI_API_KEY: "" }, { engine: "gemini-nano-banana-2.1" })).toThrow(ProviderError);
+  });
 });

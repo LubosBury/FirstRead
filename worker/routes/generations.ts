@@ -2,8 +2,9 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { badRequest, notFound, type AppEnv } from "../app";
 import { completeGeneration, failGeneration, getBalance, InsufficientCreditsError, startGeneration } from "../credits";
-import { intVar } from "../env";
+import { intVar, isAdminEmail } from "../env";
 import { getOwnedImage, publicImage, readImageBytes, saveImage, sniffImageMime } from "../images";
+import { ENGINE_IDS } from "../imaging/engines";
 import { buildPrompt } from "../imaging/prompts";
 import { getProvider, MSG, ProviderError, type ImageInput } from "../imaging/provider";
 
@@ -14,18 +15,25 @@ const body = z
     slot: z.enum(["main", "icon"]),
     prompt: z.string().max(500),
     referenceImageId: z.string().max(64).nullish(),
+    engine: z.enum(ENGINE_IDS).optional(),
   })
   .refine((b) => b.prompt.trim() || b.referenceImageId, "prompt or reference required");
 
 generations.post("/generations", async (c) => {
   const parsed = body.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return badRequest(c, "Napište, co má obrázek zobrazovat.");
-  const { slot, prompt, referenceImageId } = parsed.data;
+  if (!parsed.success) {
+    const badEngine = parsed.error.issues.some((i) => i.path[0] === "engine");
+    return badRequest(c, badEngine ? "Neznámý model." : "Napište, co má obrázek zobrazovat.");
+  }
+  const { slot, prompt, referenceImageId, engine } = parsed.data;
   const user = c.get("user");
+  if (engine && !isAdminEmail(c.env, user.email)) {
+    return c.json({ error: "forbidden", message: "Výběr modelu je jen pro správce." }, 403);
+  }
 
   let provider;
   try {
-    provider = getProvider(c.env);
+    provider = getProvider(c.env, { engine });
   } catch (e) {
     console.error("image provider unavailable", e);
     return c.json({ error: "unavailable", message: MSG.config }, 503);
@@ -74,7 +82,14 @@ generations.post("/generations", async (c) => {
     });
     // If the stale sweep refunded this one meanwhile, the image is simply free.
     await completeGeneration(c.env.DB, generationId, { imageId: image.id, usage: result.usage });
-    return c.json({ image: publicImage(image), balance: await getBalance(c.env.DB, user.id) }, 201);
+    return c.json(
+      {
+        image: publicImage(image),
+        source: { provider: provider.id, model: provider.model, quality: provider.quality },
+        balance: await getBalance(c.env.DB, user.id),
+      },
+      201,
+    );
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
     console.error("generation failed", generationId, detail);
