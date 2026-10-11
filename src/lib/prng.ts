@@ -10,6 +10,15 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
+/** Fisher-Yates, in place. */
+export function shuffle<T>(items: T[], rand: () => number): T[] {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+  return items;
+}
+
 export function randomSeed(): number {
   return Math.floor(Math.random() * 2 ** 31);
 }

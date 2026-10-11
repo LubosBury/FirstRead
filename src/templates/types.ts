@@ -30,7 +30,19 @@ export type ImageEl = {
   mirror: boolean;
 };
 
-export type LayoutElement = TextEl | ImageEl;
+/** A short label in a white circle, e.g. the day number next to a picture. Always drawn upright. */
+export type BadgeEl = {
+  kind: "badge";
+  /** Center of the circle. */
+  x: number;
+  y: number;
+  r: number;
+  text: string;
+  font: FontId;
+  fontSize: number;
+};
+
+export type LayoutElement = TextEl | ImageEl | BadgeEl;
 export type Layout = { page: typeof A4; elements: LayoutElement[] };
 
 /** Natural pixel size of each image, so layouts can respect aspect ratios. */

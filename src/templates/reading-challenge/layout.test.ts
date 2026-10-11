@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { A4, type ImageEl, type TextEl } from "@/templates/types";
+import { A4, type BadgeEl, type ImageEl, type TextEl } from "@/templates/types";
 import { defaultReadingChallengeParams, type ReadingChallengeParams } from "./params";
 import { layoutReadingChallenge } from "./layout";
 
@@ -14,6 +14,8 @@ const main = (els: ReturnType<typeof layoutReadingChallenge>["elements"]) =>
   els.find((e): e is ImageEl => e.kind === "image" && e.role === "main")!;
 const title = (els: ReturnType<typeof layoutReadingChallenge>["elements"]) =>
   els.find((e): e is TextEl => e.kind === "text")!;
+const badges = (els: ReturnType<typeof layoutReadingChallenge>["elements"]) =>
+  els.filter((e): e is BadgeEl => e.kind === "badge");
 
 describe("reading challenge defaults", () => {
   it("defaults to the given month with one item per day", () => {
@@ -22,6 +24,70 @@ describe("reading challenge defaults", () => {
     expect(p.month).toBe(10);
     expect(p.count).toBe(31);
     expect(p.title).toBe("Čtenářská výzva na říjen");
+  });
+
+  it("leaves day numbers off, so older sheets print as before", () => {
+    expect(october().dayNumbers).toBe(false);
+  });
+});
+
+describe("day numbers", () => {
+  const numbered = (overrides: Partial<ReadingChallengeParams> = {}) =>
+    layoutReadingChallenge(october({ dayNumbers: true, ...overrides }), {}).elements;
+
+  it("adds no numbers when off", () => {
+    expect(badges(layoutReadingChallenge(october(), {}).elements)).toHaveLength(0);
+  });
+
+  it("numbers every picture once, 1 to the day count", () => {
+    const texts = badges(numbered()).map((b) => Number(b.text));
+    expect(texts.toSorted((a, b) => a - b)).toEqual(Array.from({ length: 31 }, (_, i) => i + 1));
+  });
+
+  it("follows the picture count", () => {
+    const texts = badges(numbered({ count: 28 })).map((b) => Number(b.text));
+    expect(Math.max(...texts)).toBe(28);
+    expect(texts).toHaveLength(28);
+  });
+
+  it("puts the numbers in random order on the page", () => {
+    const els = numbered({ seed: 5 });
+    // Reading order: top to bottom, then left to right.
+    const reading = badges(els)
+      .toSorted((a, b) => Math.round(a.y / 10) - Math.round(b.y / 10) || a.x - b.x)
+      .map((b) => Number(b.text));
+    expect(reading).not.toEqual(reading.toSorted((a, b) => a - b));
+  });
+
+  it("reshuffles the numbers with the seed", () => {
+    const texts = (seed: number) => badges(numbered({ seed })).map((b) => b.text);
+    expect(texts(1)).not.toEqual(texts(2));
+  });
+
+  it("never moves the pictures", () => {
+    expect(icons(numbered({ seed: 9 }))).toEqual(icons(layoutReadingChallenge(october({ seed: 9 }), {}).elements));
+  });
+
+  it("sits on its own picture without touching the others, the main image or the page edge", () => {
+    const els = numbered();
+    const pics = icons(els);
+    const m = main(els);
+    badges(els).forEach((b, i) => {
+      pics.forEach((pic, j) => {
+        const d = Math.hypot(b.x - (pic.x + pic.w / 2), b.y - (pic.y + pic.h / 2));
+        if (i === j) expect(d).toBeLessThan(pic.w / 2);
+        else expect(d).toBeGreaterThanOrEqual(pic.w / 2 + b.r);
+      });
+      const nx = Math.max(m.x, Math.min(b.x, m.x + m.w));
+      const ny = Math.max(m.y, Math.min(b.y, m.y + m.h));
+      expect(Math.hypot(b.x - nx, b.y - ny)).toBeGreaterThanOrEqual(b.r);
+      expect(b.x + b.r).toBeLessThanOrEqual(A4.w);
+      expect(b.y + b.r).toBeLessThanOrEqual(A4.h);
+    });
+  });
+
+  it("uses the title font", () => {
+    for (const b of badges(numbered({ font: "fredoka" }))) expect(b.font).toBe("fredoka");
   });
 });
 

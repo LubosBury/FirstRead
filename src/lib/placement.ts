@@ -1,4 +1,4 @@
-import { mulberry32 } from "./prng";
+import { mulberry32, shuffle } from "./prng";
 
 export type Rect = { x: number; y: number; w: number; h: number };
 
@@ -114,11 +114,10 @@ function decorate(
 ): Placement[] {
   // A separate stream, so toggling jitter or adding a variant never moves items.
   const rand = mulberry32(seed ^ 0x5bd1e995);
-  const order = points.map((_, i) => i % variants);
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [order[i], order[j]] = [order[j], order[i]];
-  }
+  const order = shuffle(
+    points.map((_, i) => i % variants),
+    rand,
+  );
   return points.map((p, i) => {
     const rotation = jitter ? Math.round((rand() * 2 - 1) * MAX_ROTATION) : 0;
     const mirror = jitter ? rand() < 0.5 : false;

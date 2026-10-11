@@ -1,5 +1,6 @@
 import { placeItems, type Rect } from "@/lib/placement";
-import { A4, type AssetSizes, type ImageEl, type Layout, type TextEl } from "@/templates/types";
+import { mulberry32, shuffle } from "@/lib/prng";
+import { A4, type AssetSizes, type BadgeEl, type ImageEl, type Layout, type TextEl } from "@/templates/types";
 import type { ReadingChallengeParams } from "./params";
 
 const MARGIN = 12;
@@ -10,6 +11,8 @@ const TITLE_MAX_FONT = 15;
 const MAIN_BOX = { w: A4.w * 0.45, h: A4.h * 0.25 - MARGIN };
 const ICON_MAX = 34;
 const ICON_GAP = 3;
+/** Day-number circle radius, as a share of the picture size. */
+const BADGE_RATIO = 0.16;
 
 function mainRect(p: ReadingChallengeParams, assets: AssetSizes): Rect {
   const boxW = MAIN_BOX.w * p.mainImage.scale;
@@ -70,5 +73,31 @@ export function layoutReadingChallenge(p: ReadingChallengeParams, assets: AssetS
     mirror: it.mirror,
   }));
 
-  return { page: A4, elements: [title, main, ...icons] };
+  const badges = p.dayNumbers ? dayBadges(icons, size, p) : [];
+  return { page: A4, elements: [title, main, ...icons, ...badges] };
+}
+
+/**
+ * Numbers the pictures 1..count in random order, so kids hunt for today's day.
+ * Each number sits at the picture's bottom-right, overlapping its edge, but
+ * stays within half the gap of the picture's circle so it never touches a
+ * neighbour or the main image. Drawn after every picture, so it stays on top.
+ */
+function dayBadges(icons: ImageEl[], size: number, p: ReadingChallengeParams): BadgeEl[] {
+  // A separate stream, so the numbers never move the pictures.
+  const days = shuffle(
+    icons.map((_, i) => i + 1),
+    mulberry32(p.seed ^ 0x2545f491),
+  );
+  const r = size * BADGE_RATIO;
+  const offset = (size / 2 + ICON_GAP / 2 - r) / Math.SQRT2;
+  return icons.map((icon, i) => ({
+    kind: "badge",
+    x: icon.x + icon.w / 2 + offset,
+    y: icon.y + icon.h / 2 + offset,
+    r,
+    text: String(days[i]),
+    font: p.font,
+    fontSize: r * 1.2,
+  }));
 }

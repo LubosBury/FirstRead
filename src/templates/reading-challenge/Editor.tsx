@@ -165,6 +165,12 @@ export function ReadingChallengeEditor({ params: p, onChange }: EditorProps<Read
         <Check checked={p.jitter} onChange={(jitter) => set({ jitter })}>
           Natočit a zrcadlit obrázky náhodně
         </Check>
+        <div>
+          <Check checked={p.dayNumbers} onChange={(dayNumbers) => set({ dayNumbers })}>
+            Očíslovat dny
+          </Check>
+          <p className="mt-1 text-xs text-muted">Čísla 1-{p.count} v náhodném pořadí. Zamíchání je přeskládá.</p>
+        </div>
       </Section>
 
       <Section title="Tisk">

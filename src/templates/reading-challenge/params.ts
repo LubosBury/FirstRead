@@ -20,6 +20,8 @@ export const readingChallengeSchema = z.object({
   icons: z.array(z.string()).max(MAX_ICON_VARIANTS),
   seed: z.number().int(),
   jitter: z.boolean(),
+  /** Number the pictures 1..count, one per day, in random order. */
+  dayNumbers: z.boolean(),
   /** Clean images to pure black outlines on transparent paper. */
   lineArt: z.boolean(),
 });
@@ -45,6 +47,7 @@ export function defaultReadingChallengeParams(now: Date = new Date()): ReadingCh
     icons: [],
     seed: randomSeed(),
     jitter: true,
+    dayNumbers: false,
     lineArt: true,
   };
 }
