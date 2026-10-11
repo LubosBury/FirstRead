@@ -1,15 +1,31 @@
 import { BookOpenCheck, MailCheck } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { api, ApiError } from "@/lib/api";
 
+// Better Auth sends people back here with ?error=... when a link fails.
+const LINK_ERRORS: Record<string, string> = {
+  INVALID_TOKEN: "Odkaz už neplatí nebo byl použitý. Pošlete si nový.",
+};
+
 export function Login() {
-  const [email, setEmail] = useState("");
+  const [params, setParams] = useSearchParams();
+  // The invitation email links here with ?email=...
+  const [email, setEmail] = useState(() => params.get("email") ?? "");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    const code = params.get("error");
+    return code ? (LINK_ERRORS[code] ?? "Přihlášení se nepovedlo. Zkuste to prosím znovu.") : null;
+  });
+
+  // Read once: a reload should not show the error again.
+  useEffect(() => {
+    if (params.has("email") || params.has("error")) setParams({}, { replace: true });
+  }, [params, setParams]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
