@@ -68,6 +68,7 @@ export const api = {
   requestMagicLink: (email: string) =>
     request<{ status: boolean }>("/auth/sign-in/magic-link", send("POST", { email, callbackURL: "/" })),
   signOut: () => request<unknown>("/auth/sign-out", send("POST", {})),
+  acceptInvite: (token: string) => request<{ status: boolean }>("/auth/invite/accept", send("POST", { token })),
 
   me: () => request<Me>("/me"),
 

@@ -9,6 +9,7 @@ import { api, ApiError } from "@/lib/api";
 // Better Auth sends people back here with ?error=... when a link fails.
 const LINK_ERRORS: Record<string, string> = {
   INVALID_TOKEN: "Odkaz už neplatí nebo byl použitý. Pošlete si nový.",
+  INVALID_INVITE: "Pozvánka už neplatí nebo byla použitá. Pošlete si přihlašovací odkaz.",
 };
 
 export function Login() {

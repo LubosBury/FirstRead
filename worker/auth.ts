@@ -4,6 +4,7 @@ import { admin } from "better-auth/plugins/admin";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { ensureWallet } from "./credits";
 import { intVar } from "./env";
+import { inviteLink } from "./invite-link";
 import { magicLinkMail, sendMail } from "./mail";
 
 /** Invite-only: a link goes only to a user an admin created and hasn't banned. */
@@ -52,6 +53,7 @@ export function authOptions(env: Env) {
     },
     plugins: [
       admin(),
+      inviteLink(),
       magicLink({
         expiresIn: 60 * 15,
         storeToken: "hashed",

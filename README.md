@@ -64,7 +64,7 @@ npm test            # app unit tests (jsdom) + Worker integration tests (workerd
 
 ## Access
 
-- **Invite-only.** An admin enters an email at `/admin`. That creates the account (with the welcome credits) and emails a link to the app with the address prefilled. The person then signs in with a magic link.
+- **Invite-only.** An admin enters an email at `/admin`. That creates the account (with the welcome credits) and emails an invitation valid for 7 days. Its link opens `/invite`, where one button signs the person in. Only the button spends the one-time token, so mail scanners that open links first cannot. Resending replaces the previous invitation. After that, people sign in with a magic link.
 - **Status** in `/admin`: *Čeká na přihlášení* until the first sign-in, then *Aktivní*.
 - **Revoking access** (*Odebrat přístup*) is a Better Auth ban. It ends all of the user's sessions, and no new link is sent. Sheets and images stay. *Vrátit přístup* undoes it.
 - **Admins** are users with the `admin` role. `npm run make-admin -- <email>` makes one locally, `--remote` in production, creating the user if needed. It is also the way back in if the last admin is locked out.

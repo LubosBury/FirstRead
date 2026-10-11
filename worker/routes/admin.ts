@@ -66,16 +66,18 @@ admin.post("/admin/invites", async (c) => {
   const parsed = inviteBody.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return badRequest(c, "Zadejte platný e-mail.");
   const { email } = parsed.data;
-  const existing = await c.env.DB.prepare(`SELECT emailVerified, banned FROM "user" WHERE lower(email) = ?`)
+  const existing = await c.env.DB.prepare(`SELECT id, emailVerified, banned FROM "user" WHERE lower(email) = ?`)
     .bind(email)
-    .first<{ emailVerified: number; banned: number | null }>();
+    .first<{ id: string; emailVerified: number; banned: number | null }>();
   if (existing?.banned) return c.json({ error: "conflict", message: "Přístup byl odebrán. Vraťte ho v seznamu uživatelů." }, 409);
   if (existing?.emailVerified) return c.json({ error: "conflict", message: "Tento e-mail už přístup má." }, 409);
-  if (!existing) {
-    // With the admin's headers, the plugin checks the role as well.
-    await getAuth(c.env).api.createUser({ headers: c.req.raw.headers, body: { email, name: "", role: "user" } });
-  }
-  await sendMail(c.env, inviteMail(email, c.get("user").email, c.env.APP_URL));
+  const auth = getAuth(c.env);
+  // With the admin's headers, the plugin checks the role as well.
+  const userId =
+    existing?.id ?? (await auth.api.createUser({ headers: c.req.raw.headers, body: { email, name: "", role: "user" } })).user.id;
+  const { token } = await auth.api.createInvite({ body: { userId } });
+  const url = `${c.env.APP_URL.replace(/\/$/, "")}/invite?token=${token}&email=${encodeURIComponent(email)}`;
+  await sendMail(c.env, inviteMail(email, c.get("user").email, url));
   return c.json({ email, resent: Boolean(existing) }, existing ? 200 : 201);
 });
 
