@@ -15,19 +15,20 @@ Design spec: [`docs/superpowers/specs/2026-10-10-firstread-design.md`](docs/supe
 - **Frontend:** React 19 + Vite + Tailwind 4, served as static assets by the Worker.
 - **API:** Hono on a Cloudflare Worker (`worker/`).
 - **Data:** D1 (SQLite) for users, credits, sheets and the image index. R2 for the image files.
-- **Auth:** Better Auth, passwordless magic links (sent with Resend), invite-only.
+- **Auth:** Better Auth, passwordless magic links (sent with Resend), invite-only. Admins invite people at `/admin`.
 - **Image AI:** OpenAI GPT Image or Google Gemini, chosen with `IMAGE_PROVIDER`. `mock` for local work.
 
 ## Local development
 
 ```bash
 npm install
-cp .dev.vars.example .dev.vars        # IMAGE_PROVIDER=mock, put your email in ALLOWED_EMAILS/ADMIN_EMAILS
+cp .dev.vars.example .dev.vars        # IMAGE_PROVIDER=mock
 npm run db:migrate:local
+npm run make-admin -- you@example.com # your local account, as admin
 npm run dev                           # http://localhost:5173
 ```
 
-- **Signing in locally:** there is no email delivery without `RESEND_API_KEY`. The magic link is printed in the dev server terminal; open it in the browser.
+- **Signing in locally:** there is no email delivery without `RESEND_API_KEY`. Magic links and invitations are printed in the dev server terminal; open the link in the browser.
 - **Mock provider:** `IMAGE_PROVIDER=mock` returns built-in line drawings and costs nothing. A prompt containing `[fail]` simulates a provider failure, to try the refund path.
 - **npm install workaround:** `.npmrc` sets `legacy-peer-deps=true` to work around an npm 10 resolver crash on this dependency set.
 
@@ -46,7 +47,7 @@ npm test            # app unit tests (jsdom) + Worker integration tests (workerd
 | Var | Meaning |
 |---|---|
 | `APP_URL` | Public URL, e.g. `https://firstread.bozkovo.org`. Used by auth for links and cookies. |
-| `MAIL_FROM` | Sender of the magic-link email, on a domain verified in Resend. |
+| `MAIL_FROM` | Sender of the sign-in and invitation emails, on a domain verified in Resend. |
 | `WELCOME_CREDITS` | Credits every new account gets once (default 5). |
 | `IMAGE_PROVIDER` | `openai`, `gemini` or `mock`. |
 | `OPENAI_IMAGE_MODEL` / `GEMINI_IMAGE_MODEL` | Model IDs. **Verify against the providers' current model lists before going live**; image model names change often. |
@@ -60,10 +61,13 @@ npm test            # app unit tests (jsdom) + Worker integration tests (workerd
 | `BETTER_AUTH_SECRET` | Long random string, e.g. `openssl rand -base64 32`. |
 | `RESEND_API_KEY` | Sends the sign-in emails. |
 | `OPENAI_API_KEY` / `GEMINI_API_KEY` | Whichever provider is active. |
-| `ALLOWED_EMAILS` | Comma-separated. Only these can sign in. |
-| `ADMIN_EMAILS` | Comma-separated. These can grant credits at `/admin`. |
 
-The two email lists are secrets, not vars, so they never land in this public repo.
+## Access
+
+- **Invite-only.** An admin enters an email at `/admin`. That creates the account (with the welcome credits) and emails a link to the app with the address prefilled. The person then signs in with a magic link.
+- **Status** in `/admin`: *Čeká na přihlášení* until the first sign-in, then *Aktivní*.
+- **Revoking access** (*Odebrat přístup*) is a Better Auth ban. It ends all of the user's sessions, and no new link is sent. Sheets and images stay. *Vrátit přístup* undoes it.
+- **Admins** are users with the `admin` role. `npm run make-admin -- <email>` makes one locally, `--remote` in production, creating the user if needed. It is also the way back in if the last admin is locked out.
 
 ## Production
 
@@ -89,7 +93,7 @@ R2 must be enabled once per account in the dashboard (R2 Object Storage) before 
 9. **Custom domain:** the domain's DNS zone must be on Cloudflare. If it isn't:
    - Copy every existing record first (website A/CNAME, MX, mail TXT), then switch the nameservers.
    - Then go to Workers → `firstread` → Settings → Domains & Routes → Add → Custom domain.
-10. Sign in once, then top up accounts at `/admin`.
+10. Make yourself admin with `npm run make-admin -- <your email> --remote`, sign in, then invite people and top up credits at `/admin`.
 
 Production checks after deploy:
 
