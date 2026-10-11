@@ -15,7 +15,7 @@ Design spec: [`docs/superpowers/specs/2026-10-10-firstread-design.md`](docs/supe
 - **Frontend:** React 19 + Vite + Tailwind 4, served as static assets by the Worker.
 - **API:** Hono on a Cloudflare Worker (`worker/`).
 - **Data:** D1 (SQLite) for users, credits, sheets and the image index. R2 for the image files.
-- **Auth:** Better Auth, passwordless magic links (sent with Resend), invite-only.
+- **Auth:** Better Auth, invite-only. Passwordless magic links (sent with Resend), plus optional Sign in with Apple.
 - **Image AI:** OpenAI GPT Image or Google Gemini, chosen with `IMAGE_PROVIDER`. `mock` for local work.
 
 ## Local development
@@ -62,8 +62,37 @@ npm test            # app unit tests (jsdom) + Worker integration tests (workerd
 | `OPENAI_API_KEY` / `GEMINI_API_KEY` | Whichever provider is active. |
 | `ALLOWED_EMAILS` | Comma-separated. Only these can sign in. |
 | `ADMIN_EMAILS` | Comma-separated. These can grant credits at `/admin`. |
+| `APPLE_CLIENT_ID` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY` | Optional. Sign in with Apple, see below. The button shows only when all four are set. |
 
 The two email lists are secrets, not vars, so they never land in this public repo.
+
+## Sign in with Apple
+
+Optional second way in, next to the magic link. Setup, in the Apple Developer account (Certificates, Identifiers & Profiles):
+
+1. **App ID:** an App ID with the Sign in with Apple capability. It is the primary App ID the other two items hang off.
+2. **Services ID** (this is `APPLE_CLIENT_ID`, e.g. `com.product-gnome.firstread`): enable Sign in with Apple and configure it with:
+   - Domain: `product-gnome.com`
+   - Return URL: `https://product-gnome.com/api/auth/callback/apple`
+3. **Key:** create a key with Sign in with Apple enabled, linked to the App ID. Download the `.p8` file (Apple lets you download it only once). Its Key ID is `APPLE_KEY_ID`.
+4. **Team ID** (`APPLE_TEAM_ID`): shown on the Membership page.
+5. Set the secrets:
+
+```bash
+npx wrangler secret put APPLE_CLIENT_ID
+npx wrangler secret put APPLE_TEAM_ID
+npx wrangler secret put APPLE_KEY_ID
+npx wrangler secret put APPLE_PRIVATE_KEY < AuthKey_XXXXXXXXXX.p8
+```
+
+How it behaves:
+
+- **Client secret:** Apple wants a JWT signed with the `.p8` key, valid at most six months. The Worker signs a fresh one itself (30 days, renewed automatically), so there is nothing to rotate by hand.
+- **Invite-only:** the email Apple reports must be in `ALLOWED_EMAILS`, the same list as for magic links. It is checked on every Apple sign-in, so removing an address locks out its Apple sign-in too.
+- **Existing accounts:** a teacher who signed in by magic link and then uses Apple with the same email lands in the same account (same sheets, library and credits).
+- **Hide My Email:** Apple can hand out a relay address (`…@privaterelay.appleid.com`) instead of the real one. It never matches an invite, so the sign-in page explains what to do. To let such a teacher in anyway, add the relay address to `ALLOWED_EMAILS`.
+- **Local development:** Apple does not accept `localhost` return URLs, so Apple sign-in can only be tried on a real HTTPS domain. Locally, leave the four values empty and the button stays hidden.
+- **Adoption:** `SELECT COUNT(DISTINCT userId) FROM account WHERE providerId = 'apple'` counts teachers who have used Apple at least once.
 
 ## Production
 

@@ -5,7 +5,7 @@ export const ORIGIN = "http://localhost";
 
 export function api(path: string, init: RequestInit & { cookie?: string } = {}) {
   const headers = new Headers(init.headers);
-  headers.set("Origin", ORIGIN);
+  if (!headers.has("Origin")) headers.set("Origin", ORIGIN);
   if (init.cookie) headers.set("Cookie", init.cookie);
   return exports.default.fetch(new Request(`${ORIGIN}/api${path}`, { ...init, headers }));
 }
