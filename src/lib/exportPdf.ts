@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf";
 import type { Asset } from "./assets";
-import { cssFont, ensureFontLoaded } from "./fonts";
-import { titleFontSize } from "./renderSvg";
+import { cssFont, ensureFontLoaded, type FontId } from "./fonts";
+import { BADGE_STROKE, titleFontSize } from "./renderSvg";
 import type { Layout } from "@/templates/types";
 
 const DPI = 300;
@@ -11,6 +11,19 @@ function loadImg(url: string): Promise<HTMLImageElement> {
   const img = new Image();
   img.src = url;
   return img.decode().then(() => img);
+}
+
+/** Canvas fonts are in px; draw at 10x and scale down so tiny mm sizes keep precision. */
+function drawCenteredText(ctx: CanvasRenderingContext2D, text: string, font: FontId, size: number, x: number, y: number) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(0.1, 0.1);
+  ctx.font = cssFont(font, size * 10);
+  ctx.fillStyle = "#000";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, 0, 0);
+  ctx.restore();
 }
 
 /**
@@ -30,17 +43,19 @@ export async function renderSheetCanvas(layout: Layout, assets: Record<string, A
   for (const el of layout.elements) {
     if (el.kind === "text") {
       await ensureFontLoaded(el.font);
-      // Canvas fonts are in px; draw at 10x and scale down so tiny mm sizes keep precision.
-      const size = titleFontSize(el);
-      ctx.save();
-      ctx.translate(el.x + el.w / 2, el.y + el.h / 2);
-      ctx.scale(0.1, 0.1);
-      ctx.font = cssFont(el.font, size * 10);
-      ctx.fillStyle = "#000";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(el.text, 0, 0);
-      ctx.restore();
+      drawCenteredText(ctx, el.text, el.font, titleFontSize(el), el.x + el.w / 2, el.y + el.h / 2);
+      continue;
+    }
+    if (el.kind === "badge") {
+      await ensureFontLoaded(el.font);
+      ctx.beginPath();
+      ctx.arc(el.x, el.y, el.r, 0, 2 * Math.PI);
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+      ctx.lineWidth = BADGE_STROKE;
+      ctx.strokeStyle = "#000";
+      ctx.stroke();
+      drawCenteredText(ctx, el.text, el.font, el.fontSize, el.x, el.y);
       continue;
     }
     const asset = el.imageId ? assets[el.imageId] : undefined;

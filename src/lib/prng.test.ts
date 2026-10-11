@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mulberry32 } from "./prng";
+import { mulberry32, shuffle } from "./prng";
 
 describe("mulberry32", () => {
   it("returns the same sequence for the same seed", () => {
@@ -19,5 +19,17 @@ describe("mulberry32", () => {
       expect(v).toBeGreaterThanOrEqual(0);
       expect(v).toBeLessThan(1);
     }
+  });
+});
+
+describe("shuffle", () => {
+  it("keeps every item exactly once", () => {
+    const items = Array.from({ length: 31 }, (_, i) => i + 1);
+    expect(shuffle([...items], mulberry32(3)).toSorted((a, b) => a - b)).toEqual(items);
+  });
+
+  it("is deterministic for a seed", () => {
+    const items = Array.from({ length: 10 }, (_, i) => i);
+    expect(shuffle([...items], mulberry32(3))).toEqual(shuffle([...items], mulberry32(3)));
   });
 });

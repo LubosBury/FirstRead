@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import type { Asset } from "./assets";
 import { canvasMeasure, fitFontSize } from "./fitText";
 import { FONTS } from "./fonts";
-import type { ImageEl, Layout, TextEl } from "@/templates/types";
+import type { BadgeEl, ImageEl, Layout, TextEl } from "@/templates/types";
+
+/** Outline of a badge circle, in mm. Shared with the PDF export. */
+export const BADGE_STROKE = 0.4;
 
 /** Re-renders once web fonts arrive, so text is measured with the real font. */
 function useFontsReady(): number {
@@ -37,6 +40,27 @@ function Text({ el }: { el: TextEl }) {
     >
       {el.text}
     </text>
+  );
+}
+
+function Badge({ el }: { el: BadgeEl }) {
+  const f = FONTS[el.font];
+  return (
+    <g data-role="badge">
+      <circle cx={el.x} cy={el.y} r={el.r} fill="#fff" stroke="#000" strokeWidth={BADGE_STROKE} />
+      <text
+        x={el.x}
+        y={el.y}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontFamily={`"${f.family}"`}
+        fontWeight={f.weight}
+        fontSize={el.fontSize}
+        fill="#000"
+      >
+        {el.text}
+      </text>
+    </g>
   );
 }
 
@@ -87,6 +111,8 @@ export function SheetSvg({
       {layout.elements.map((el, i) =>
         el.kind === "text" ? (
           <Text key={i} el={el} />
+        ) : el.kind === "badge" ? (
+          <Badge key={i} el={el} />
         ) : (
           <Picture key={i} el={el} asset={el.imageId ? assets[el.imageId] : undefined} placeholders={placeholders} />
         ),
