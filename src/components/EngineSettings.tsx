@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Label, Select } from "@/components/ui/input";
 import { useMe } from "@/hooks/useMe";
 import { api, ApiError, type EngineSettings as Settings } from "@/lib/api";
+import { credits } from "@/lib/plural";
 
 /** Admin choice of the engine every generation uses unless overridden. */
 export function EngineSettings() {
@@ -47,13 +48,13 @@ export function EngineSettings() {
             {settings.defaultEngine === null && <option value="">Podle konfigurace</option>}
             {settings.engines.map((e) => (
               <option key={e.id} value={e.id}>
-                {e.label}
+                {e.label} · {credits(e.credits)} za obrázek
               </option>
             ))}
           </Select>
           <p className="text-xs text-muted">
             Nízká kvalita na omalovánky stačí. Střední kreslí víc detailů, ale v testu spotřebovala asi 9× víc tokenů
-            a trvala asi 3× déle.
+            a trvala asi 3× déle, proto stojí 2 kredity.
           </p>
           {message && <p className="text-sm text-muted">{message}</p>}
         </div>

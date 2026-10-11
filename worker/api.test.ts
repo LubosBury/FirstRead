@@ -270,6 +270,45 @@ describe("default engine setting", () => {
     expect(JSON.parse(calls[0].body).quality).toBe("low");
   });
 
+  it("charges the default engine's price and shows it on /me", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ data: [{ b64_json: MOCK_ICON_PNG_B64 }] }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    expect((await put(admin, "openai-medium")).status).toBe(200);
+    const cookie = await signIn("teacher@example.com");
+    const me = (await (await api("/me", { cookie })).json()) as { balance: number; costs: { main: number; icon: number } };
+    expect(me.costs).toEqual({ main: 2, icon: 2 });
+
+    const res = await api("/generations", { ...json({ slot: "icon", prompt: "houbička" }), cookie });
+    expect(res.status).toBe(201);
+    expect(((await res.json()) as { balance: number }).balance).toBe(me.balance - 2);
+  });
+
+  it("charges an admin override at that engine's price", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ data: [{ b64_json: MOCK_ICON_PNG_B64 }] }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    const before = ((await (await api("/me", { cookie: admin })).json()) as { balance: number }).balance;
+    const low = await api("/generations", { ...json({ slot: "main", prompt: "x", engine: "openai-low" }), cookie: admin });
+    expect(((await low.json()) as { balance: number }).balance).toBe(before - 1);
+    const medium = await api("/generations", { ...json({ slot: "main", prompt: "x", engine: "openai-medium" }), cookie: admin });
+    expect(((await medium.json()) as { balance: number }).balance).toBe(before - 3);
+  });
+
+  it("lists each engine's price for admins", async () => {
+    const me = (await (await api("/me", { cookie: admin })).json()) as { engines: { id: string; credits: number }[] };
+    expect(me.engines).toEqual([
+      { id: "openai-low", label: "OpenAI · nízká kvalita", credits: 1 },
+      { id: "openai-medium", label: "OpenAI · střední kvalita", credits: 2 },
+    ]);
+  });
+
   it("can be cleared back to the configured default", async () => {
     expect((await put(admin, null)).status).toBe(200);
     const cookie = await signIn("teacher@example.com");

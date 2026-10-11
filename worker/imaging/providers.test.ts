@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createGeminiProvider } from "./gemini";
 import { createMockProvider } from "./mock";
 import { createOpenAIProvider } from "./openai";
-import { ENGINE_IDS } from "./engines";
+import { ENGINE_IDS, getEngine } from "./engines";
 import { getProvider, ProviderError } from "./provider";
 
 type Call = { url: string; init: RequestInit };
@@ -171,6 +171,11 @@ describe("getProvider with an engine", () => {
 
   it("offers OpenAI at two qualities, low first", () => {
     expect(ENGINE_IDS).toEqual(["openai-low", "openai-medium"]);
+  });
+
+  it("prices medium quality at twice the credits of low", () => {
+    expect(getEngine("openai-low").credits).toBe(1);
+    expect(getEngine("openai-medium").credits).toBe(2);
   });
 
   it("overrides the configured provider and quality", () => {

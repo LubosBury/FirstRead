@@ -53,7 +53,8 @@ export function ImagePicker({
   const [uploaded, setUploaded] = useState<LibraryImage | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const cost = me?.costs[preset] ?? 1;
+  // An admin's per-image pick carries its own price; otherwise the default's.
+  const cost = me?.engines?.find((e) => e.id === engine)?.credits ?? me?.costs[preset] ?? 1;
   const balance = me?.balance ?? 0;
   const short = balance < cost;
 
@@ -178,11 +179,12 @@ export function ImagePicker({
               <Label htmlFor="engine">Model (jen pro správce)</Label>
               <Select id="engine" value={engine} onChange={(e) => setEngine(e.target.value)}>
                 <option value="">
-                  Výchozí{me.defaultEngine ? ` (${me.engines.find((e) => e.id === me.defaultEngine)?.label})` : ""}
+                  Výchozí{me.defaultEngine ? ` (${me.engines.find((e) => e.id === me.defaultEngine)?.label})` : ""} ·{" "}
+                  {credits(me.costs[preset])}
                 </option>
                 {me.engines.map((e) => (
                   <option key={e.id} value={e.id}>
-                    {e.label}
+                    {e.label} · {credits(e.credits)}
                   </option>
                 ))}
               </Select>

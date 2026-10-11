@@ -3,8 +3,8 @@ import { z } from "zod";
 import { badRequest, notFound, type AppEnv } from "../app";
 import { grantCredits, InsufficientCreditsError } from "../credits";
 import { isAdminEmail } from "../env";
-import { ENGINE_IDS, ENGINES, engineFromEnv } from "../imaging/engines";
-import { getDefaultEngine, setDefaultEngine } from "../settings";
+import { ENGINE_IDS, engineOptions } from "../imaging/engines";
+import { resolveEngine, setDefaultEngine } from "../settings";
 
 export const admin = new Hono<AppEnv>();
 
@@ -50,11 +50,8 @@ admin.post("/admin/grant", async (c) => {
 const settingsBody = z.object({ defaultEngine: z.enum(ENGINE_IDS).nullable() });
 
 async function settings(c: { env: Env }) {
-  return {
-    // What generations use right now: the saved choice, else the Worker vars.
-    defaultEngine: (await getDefaultEngine(c.env.DB)) ?? engineFromEnv(c.env),
-    engines: ENGINES.map(({ id, label }) => ({ id, label })),
-  };
+  // What generations use right now: the saved choice, else the Worker vars.
+  return { defaultEngine: await resolveEngine(c.env), engines: engineOptions() };
 }
 
 admin.get("/admin/settings", async (c) => c.json(await settings(c)));

@@ -1,4 +1,5 @@
-import { isEngineId, type EngineId } from "./imaging/engines";
+import { intVar } from "./env";
+import { engineFromEnv, getEngine, isEngineId, type EngineId } from "./imaging/engines";
 
 const DEFAULT_ENGINE = "default_engine";
 
@@ -22,4 +23,18 @@ export async function setDefaultEngine(db: D1Database, engine: EngineId | null, 
     )
     .bind(DEFAULT_ENGINE, engine, new Date().toISOString(), by)
     .run();
+}
+
+/** The engine a generation runs on: an admin's pick, else the saved default, else the Worker vars. */
+export async function resolveEngine(env: Env, override?: EngineId): Promise<EngineId | null> {
+  return override ?? (await getDefaultEngine(env.DB)) ?? engineFromEnv(env);
+}
+
+/**
+ * Credits for one image. Listed engines carry their own price; the per-slot
+ * vars only price setups outside the list (the mock provider in dev and tests).
+ */
+export function creditCost(env: Env, engine: EngineId | null, slot: "main" | "icon"): number {
+  if (engine) return getEngine(engine).credits;
+  return slot === "main" ? intVar(env.CREDIT_COST_MAIN, 1) : intVar(env.CREDIT_COST_ICON, 1);
 }

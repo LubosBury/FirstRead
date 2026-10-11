@@ -32,12 +32,13 @@ export type Me = {
   isAdmin: boolean;
   costs: { main: number; icon: number };
   /** Only for admins: engines to compare on the same prompt. */
-  engines?: { id: string; label: string }[];
+  engines?: EngineOption[];
   /** Only for admins: what generations use when no engine is picked. */
   defaultEngine?: string | null;
 };
 
-export type EngineSettings = { defaultEngine: string | null; engines: { id: string; label: string }[] };
+export type EngineOption = { id: string; label: string; credits: number };
+export type EngineSettings = { defaultEngine: string | null; engines: EngineOption[] };
 
 export type LibraryImage = {
   id: string;

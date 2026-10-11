@@ -2,11 +2,11 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { badRequest, notFound, type AppEnv } from "../app";
 import { completeGeneration, failGeneration, getBalance, InsufficientCreditsError, startGeneration } from "../credits";
-import { intVar, isAdminEmail } from "../env";
+import { isAdminEmail } from "../env";
 import { getOwnedImage, publicImage, readImageBytes, saveImage, sniffImageMime } from "../images";
 import { ENGINE_IDS } from "../imaging/engines";
 import { buildPrompt } from "../imaging/prompts";
-import { getDefaultEngine } from "../settings";
+import { creditCost, resolveEngine } from "../settings";
 import { getProvider, MSG, ProviderError, type ImageInput } from "../imaging/provider";
 
 export const generations = new Hono<AppEnv>();
@@ -32,10 +32,10 @@ generations.post("/generations", async (c) => {
     return c.json({ error: "forbidden", message: "Výběr modelu je jen pro správce." }, 403);
   }
 
+  const engineId = await resolveEngine(c.env, engine);
   let provider;
   try {
-    // An admin's explicit pick, else the default chosen in Správa, else the Worker vars.
-    provider = getProvider(c.env, { engine: engine ?? (await getDefaultEngine(c.env.DB)) ?? undefined });
+    provider = getProvider(c.env, { engine: engineId ?? undefined });
   } catch (e) {
     console.error("image provider unavailable", e);
     return c.json({ error: "unavailable", message: MSG.config }, 503);
@@ -49,7 +49,7 @@ generations.post("/generations", async (c) => {
     reference = { bytes, mime: row.mime };
   }
 
-  const cost = slot === "main" ? intVar(c.env.CREDIT_COST_MAIN, 1) : intVar(c.env.CREDIT_COST_ICON, 1);
+  const cost = creditCost(c.env, engineId, slot);
   let generationId: string;
   try {
     generationId = await startGeneration(c.env.DB, {
