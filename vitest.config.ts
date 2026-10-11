@@ -1,8 +1,12 @@
 import { defineConfig } from "vitest/config";
 import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
+import { generateKeyPairSync } from "node:crypto";
 import { fileURLToPath, URL } from "node:url";
 
 const alias = { "@": fileURLToPath(new URL("./src", import.meta.url)) };
+
+// A throwaway Sign in with Apple key, so the Worker tests sign real client secrets.
+const appleKey = generateKeyPairSync("ec", { namedCurve: "P-256" }).privateKey.export({ type: "pkcs8", format: "pem" });
 
 export default defineConfig({
   test: {
@@ -28,6 +32,10 @@ export default defineConfig({
                 RESEND_API_KEY: "",
                 OPENAI_API_KEY: "test-openai",
                 GEMINI_API_KEY: "test-gemini",
+                APPLE_CLIENT_ID: "com.example.firstread.web",
+                APPLE_TEAM_ID: "TEAM123456",
+                APPLE_KEY_ID: "KEY1234567",
+                APPLE_PRIVATE_KEY: appleKey.toString(),
               },
             },
           })),

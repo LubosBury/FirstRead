@@ -15,7 +15,7 @@ Design spec: [`docs/superpowers/specs/2026-10-10-firstread-design.md`](docs/supe
 - **Frontend:** React 19 + Vite + Tailwind 4, served as static assets by the Worker.
 - **API:** Hono on a Cloudflare Worker (`worker/`).
 - **Data:** D1 (SQLite) for users, credits, sheets and the image index. R2 for the image files.
-- **Auth:** Better Auth, passwordless magic links (sent with Resend), invite-only. Admins invite people at `/admin`.
+- **Auth:** Better Auth, passwordless magic links (sent with Resend), invite-only. Admins invite people at `/admin`. Optional Sign in with Apple for invited people.
 - **Image AI:** OpenAI GPT Image or Google Gemini, chosen with `IMAGE_PROVIDER`. `mock` for local work.
 
 ## Local development
@@ -61,6 +61,7 @@ npm test            # app unit tests (jsdom) + Worker integration tests (workerd
 | `BETTER_AUTH_SECRET` | Long random string, e.g. `openssl rand -base64 32`. |
 | `RESEND_API_KEY` | Sends the sign-in emails. |
 | `OPENAI_API_KEY` / `GEMINI_API_KEY` | Whichever provider is active. |
+| `APPLE_CLIENT_ID` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY` | Optional. Sign in with Apple, see below. The button shows only when all four are set. |
 
 ## Access
 
@@ -68,6 +69,35 @@ npm test            # app unit tests (jsdom) + Worker integration tests (workerd
 - **Status** in `/admin`: *Čeká na přihlášení* until the first sign-in, then *Aktivní*.
 - **Revoking access** (*Odebrat přístup*) is a Better Auth ban. It ends all of the user's sessions, and no new link is sent. Sheets and images stay. *Vrátit přístup* undoes it.
 - **Admins** are users with the `admin` role. `npm run make-admin -- <email>` makes one locally, `--remote` in production, creating the user if needed. It is also the way back in if the last admin is locked out.
+
+## Sign in with Apple
+
+Optional second way in, next to the magic link. Setup, in the Apple Developer account (Certificates, Identifiers & Profiles):
+
+1. **App ID:** an App ID with the Sign in with Apple capability. It is the primary App ID the other two items hang off.
+2. **Services ID** (this is `APPLE_CLIENT_ID`, e.g. `com.product-gnome.firstread`): enable Sign in with Apple and configure it with:
+   - Domain: `product-gnome.com`
+   - Return URL: `https://product-gnome.com/api/auth/callback/apple`
+3. **Key:** create a key with Sign in with Apple enabled, linked to the App ID. Download the `.p8` file (Apple lets you download it only once). Its Key ID is `APPLE_KEY_ID`.
+4. **Team ID** (`APPLE_TEAM_ID`): shown on the Membership page.
+5. Set the secrets:
+
+```bash
+npx wrangler secret put APPLE_CLIENT_ID
+npx wrangler secret put APPLE_TEAM_ID
+npx wrangler secret put APPLE_KEY_ID
+npx wrangler secret put APPLE_PRIVATE_KEY < AuthKey_XXXXXXXXXX.p8
+```
+
+How it behaves:
+
+- **Client secret:** Apple wants a JWT signed with the `.p8` key, valid at most six months. The Worker signs a fresh one itself (30 days, renewed automatically), so there is nothing to rotate by hand.
+- **Invite-only:** Apple signs in to an account an admin created at `/admin`, matched by the email Apple reports. It never creates accounts. Revoking access at `/admin` blocks Apple too.
+- **First time:** Apple works once the teacher has opened the invitation or a magic link once. Until the mailbox is proven, Better Auth will not attach an Apple account, and the sign-in page says to use the email link first.
+- **Same account:** Apple and the email links lead to the same account (same sheets, library and credits).
+- **Hide My Email:** Apple can hand out a relay address (`…@privaterelay.appleid.com`) instead of the real one. It never matches an invite, so the sign-in page explains how to share the real email instead.
+- **Local development:** Apple does not accept `localhost` return URLs, so Apple sign-in can only be tried on a real HTTPS domain. Locally, leave the four values empty and the button stays hidden.
+- **Adoption:** `SELECT COUNT(DISTINCT userId) FROM account WHERE providerId = 'apple'` counts teachers who have used Apple at least once.
 
 ## Production
 

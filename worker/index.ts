@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { requireUser, type AppEnv } from "./app";
-import { getAuth } from "./auth";
+import { appleEnabled, getAuth } from "./auth";
 import { refundStaleGenerations } from "./credits";
 import { admin } from "./routes/admin";
 import { generations } from "./routes/generations";
@@ -12,7 +12,10 @@ const app = new Hono<AppEnv>().basePath("/api");
 
 app.get("/health", (c) => c.json({ ok: true }));
 
-app.on(["GET", "POST"], "/auth/*", (c) => getAuth(c.env).handler(c.req.raw));
+// Lets the sign-in page show the Apple button only once Apple is configured.
+app.get("/login-methods", async (c) => c.json({ apple: await appleEnabled(c.env) }));
+
+app.on(["GET", "POST"], "/auth/*", async (c) => (await getAuth(c.env)).handler(c.req.raw));
 
 const authed = new Hono<AppEnv>();
 authed.use("*", requireUser);

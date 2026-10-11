@@ -71,7 +71,7 @@ admin.post("/admin/invites", async (c) => {
     .first<{ id: string; emailVerified: number; banned: number | null }>();
   if (existing?.banned) return c.json({ error: "conflict", message: "Přístup byl odebrán. Vraťte ho v seznamu uživatelů." }, 409);
   if (existing?.emailVerified) return c.json({ error: "conflict", message: "Tento e-mail už přístup má." }, 409);
-  const auth = getAuth(c.env);
+  const auth = await getAuth(c.env);
   // With the admin's headers, the plugin checks the role as well.
   const userId =
     existing?.id ?? (await auth.api.createUser({ headers: c.req.raw.headers, body: { email, name: "", role: "user" } })).user.id;
@@ -85,7 +85,7 @@ admin.post("/admin/invites", async (c) => {
 // gate refuses banned users. Their sheets and images stay.
 admin.post("/admin/users/:id/ban", async (c) => {
   try {
-    await getAuth(c.env).api.banUser({ headers: c.req.raw.headers, body: { userId: c.req.param("id") } });
+    await (await getAuth(c.env)).api.banUser({ headers: c.req.raw.headers, body: { userId: c.req.param("id") } });
   } catch (e) {
     if (e instanceof APIError && e.statusCode === 400) return badRequest(c, "Sami sobě přístup odebrat nemůžete.");
     if (e instanceof APIError && e.statusCode === 404) return notFound(c);
@@ -96,7 +96,7 @@ admin.post("/admin/users/:id/ban", async (c) => {
 
 admin.post("/admin/users/:id/unban", async (c) => {
   try {
-    await getAuth(c.env).api.unbanUser({ headers: c.req.raw.headers, body: { userId: c.req.param("id") } });
+    await (await getAuth(c.env)).api.unbanUser({ headers: c.req.raw.headers, body: { userId: c.req.param("id") } });
   } catch (e) {
     if (e instanceof APIError && e.statusCode === 404) return notFound(c);
     throw e;

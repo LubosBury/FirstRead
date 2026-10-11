@@ -64,9 +64,15 @@ export type AdminUser = {
   emailVerified: boolean;
 };
 
+export type LoginMethods = { apple: boolean };
+
 export const api = {
+  loginMethods: () => request<LoginMethods>("/login-methods"),
   requestMagicLink: (email: string) =>
     request<{ status: boolean }>("/auth/sign-in/magic-link", send("POST", { email, callbackURL: "/" })),
+  /** Returns Apple's sign-in page; Apple sends the browser back to "/", or to "/login?error=…". */
+  startAppleSignIn: () =>
+    request<{ url: string }>("/auth/sign-in/social", send("POST", { provider: "apple", callbackURL: "/", errorCallbackURL: "/login" })),
   signOut: () => request<unknown>("/auth/sign-out", send("POST", {})),
   acceptInvite: (token: string) => request<{ status: boolean }>("/auth/invite/accept", send("POST", { token })),
 
