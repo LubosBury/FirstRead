@@ -1,8 +1,8 @@
 import { jsPDF } from "jspdf";
 import type { Asset } from "./assets";
 import { cssFont, ensureFontLoaded, type FontId } from "./fonts";
-import { BADGE_STROKE, titleFontSize } from "./renderSvg";
-import type { Layout } from "@/templates/types";
+import { titleFontSize } from "./renderSvg";
+import { badgeOuterR, type Layout } from "@/templates/types";
 
 const DPI = 300;
 const PX_PER_MM = DPI / 25.4;
@@ -49,12 +49,18 @@ export async function renderSheetCanvas(layout: Layout, assets: Record<string, A
     if (el.kind === "badge") {
       await ensureFontLoaded(el.font);
       ctx.beginPath();
-      ctx.arc(el.x, el.y, el.r, 0, 2 * Math.PI);
+      ctx.arc(el.x, el.y, badgeOuterR(el), 0, 2 * Math.PI);
       ctx.fillStyle = "#fff";
       ctx.fill();
-      ctx.lineWidth = BADGE_STROKE;
-      ctx.strokeStyle = "#000";
-      ctx.stroke();
+      if (el.stroke) {
+        ctx.beginPath();
+        ctx.arc(el.x, el.y, el.r, 0, 2 * Math.PI);
+        ctx.lineWidth = el.stroke.width;
+        ctx.strokeStyle = "#000";
+        ctx.setLineDash(el.stroke.dash ?? []);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       drawCenteredText(ctx, el.text, el.font, el.fontSize, el.x, el.y);
       continue;
     }

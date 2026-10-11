@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 import type { Asset } from "./assets";
 import { canvasMeasure, fitFontSize } from "./fitText";
 import { FONTS } from "./fonts";
-import type { BadgeEl, ImageEl, Layout, TextEl } from "@/templates/types";
-
-/** Outline of a badge circle, in mm. Shared with the PDF export. */
-export const BADGE_STROKE = 0.4;
+import { badgeOuterR, type BadgeEl, type ImageEl, type Layout, type TextEl } from "@/templates/types";
 
 /** Re-renders once web fonts arrive, so text is measured with the real font. */
 function useFontsReady(): number {
@@ -47,7 +44,18 @@ function Badge({ el }: { el: BadgeEl }) {
   const f = FONTS[el.font];
   return (
     <g data-role="badge">
-      <circle cx={el.x} cy={el.y} r={el.r} fill="#fff" stroke="#000" strokeWidth={BADGE_STROKE} />
+      <circle cx={el.x} cy={el.y} r={badgeOuterR(el)} fill="#fff" />
+      {el.stroke && (
+        <circle
+          cx={el.x}
+          cy={el.y}
+          r={el.r}
+          fill="none"
+          stroke="#000"
+          strokeWidth={el.stroke.width}
+          strokeDasharray={el.stroke.dash?.join(" ")}
+        />
+      )}
       <text
         x={el.x}
         y={el.y}
