@@ -17,8 +17,6 @@ interface __BaseEnv_Env {
 	IMAGE_PROVIDER: string;
 	OPENAI_API_KEY: string;
 	GEMINI_API_KEY: string;
-	ALLOWED_EMAILS: string;
-	ADMIN_EMAILS: string;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {
@@ -31,7 +29,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "MAIL_FROM" | "WELCOME_CREDITS" | "OPENAI_IMAGE_MODEL" | "GEMINI_IMAGE_MODEL" | "IMAGE_QUALITY" | "CREDIT_COST_MAIN" | "CREDIT_COST_ICON" | "APP_URL" | "BETTER_AUTH_SECRET" | "RESEND_API_KEY" | "IMAGE_PROVIDER" | "OPENAI_API_KEY" | "GEMINI_API_KEY" | "ALLOWED_EMAILS" | "ADMIN_EMAILS">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "MAIL_FROM" | "WELCOME_CREDITS" | "OPENAI_IMAGE_MODEL" | "GEMINI_IMAGE_MODEL" | "IMAGE_QUALITY" | "CREDIT_COST_MAIN" | "CREDIT_COST_ICON" | "APP_URL" | "BETTER_AUTH_SECRET" | "RESEND_API_KEY" | "IMAGE_PROVIDER" | "OPENAI_API_KEY" | "GEMINI_API_KEY">> {}
 }
 declare module "*.txt" {
 	const value: string;

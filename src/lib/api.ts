@@ -13,8 +13,8 @@ export class ApiError extends Error {
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api${path}`, { credentials: "same-origin", ...init });
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
-    throw new ApiError(res.status, body.error ?? "error", body.message ?? "Něco se pokazilo. Zkuste to prosím znovu.");
+    const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string; message?: string };
+    throw new ApiError(res.status, body.error ?? body.code ?? "error", body.message ?? "Něco se pokazilo. Zkuste to prosím znovu.");
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
@@ -53,7 +53,16 @@ export type LibraryImage = {
 
 export type SheetSummary = { id: string; templateId: string; title: string; createdAt: string; updatedAt: string };
 export type Sheet<P = unknown> = SheetSummary & { params: P };
-export type AdminUser = { id: string; email: string; createdAt: string; balance: number; generated: number };
+export type AdminUser = {
+  id: string;
+  email: string;
+  createdAt: string;
+  balance: number;
+  generated: number;
+  role: string | null;
+  banned: boolean;
+  emailVerified: boolean;
+};
 
 export const api = {
   requestMagicLink: (email: string) =>
@@ -89,4 +98,7 @@ export const api = {
   saveAdminSettings: (defaultEngine: string | null) => request<EngineSettings>("/admin/settings", send("PUT", { defaultEngine })),
   adminGrant: (email: string, amount: number, note: string) =>
     request<{ balance: number }>("/admin/grant", send("POST", { email, amount, note })),
+  adminInvite: (email: string) => request<{ email: string; resent: boolean }>("/admin/invites", send("POST", { email })),
+  adminBan: (id: string) => request<void>(`/admin/users/${id}/ban`, { method: "POST" }),
+  adminUnban: (id: string) => request<void>(`/admin/users/${id}/unban`, { method: "POST" }),
 };

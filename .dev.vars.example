@@ -7,6 +7,3 @@ RESEND_API_KEY=
 IMAGE_PROVIDER=mock
 OPENAI_API_KEY=
 GEMINI_API_KEY=
-# Comma-separated. Only these addresses can sign in; admins can grant credits.
-ALLOWED_EMAILS=you@example.com
-ADMIN_EMAILS=you@example.com
