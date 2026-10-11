@@ -34,3 +34,18 @@ export function magicLinkMail(to: string, url: string): Mail {
 </div>`,
   };
 }
+
+/** Signs the person in from the /invite page (see worker/invite-link.ts). */
+export function inviteMail(to: string, invitedBy: string, url: string): Mail {
+  return {
+    to,
+    subject: "Pozvánka do FirstRead",
+    text: `Dobrý den,\n\n${invitedBy} vás zve do FirstRead, kde si připravíte pracovní listy pro prvňáčky.\n\nPřihlásíte se tímto odkazem, bez hesla:\n${url}\n\nPozvánka platí 7 dní. Potom se přihlásíte odkazem, který vám pošleme e-mailem.`,
+    html: `<div style="font-family:Arial,sans-serif;font-size:16px;color:#1d2422">
+<p>Dobrý den,</p>
+<p>${esc(invitedBy)} vás zve do FirstRead, kde si připravíte pracovní listy pro prvňáčky.</p>
+<p><a href="${esc(url)}" style="display:inline-block;background:#1f6f5c;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Přihlásit se do FirstRead</a></p>
+<p style="color:#66706c;font-size:13px">Pozvánka platí 7&nbsp;dní. Potom se přihlásíte odkazem, který vám pošleme e-mailem.</p>
+</div>`,
+  };
+}

@@ -30,9 +30,9 @@ export function ImageSlot({
               type="button"
               aria-label="Odebrat obrázek"
               onClick={() => onChange(value.filter((v) => v !== id))}
-              className="absolute -top-2 -right-2 rounded-full border border-line bg-surface p-0.5 text-muted shadow-sm hover:text-danger"
+              className="absolute -top-2.5 -right-2.5 rounded-full border border-line bg-surface p-1.5 text-muted shadow-sm hover:text-danger"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-4 w-4" />
             </button>
           </div>
         ))}

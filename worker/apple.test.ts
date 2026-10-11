@@ -3,7 +3,7 @@ import { Buffer } from "node:buffer";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { appleClientSecret, appleConfig, type AppleConfig } from "./apple";
 import { appleEnabled, getAuth } from "./auth";
-import { api, json, signIn } from "./test/session";
+import { api, invite, json, signIn } from "./test/session";
 
 const APPLE = "https://appleid.apple.com";
 const decode = (part: string) => JSON.parse(Buffer.from(part, "base64url").toString()) as Record<string, unknown>;
@@ -111,6 +111,8 @@ async function appleSignIn(email: string, opts: { user?: unknown; sub?: string }
 const me = async (cookie: string) =>
   (await (await api("/me", { cookie })).json()) as { user: { id: string; email: string; name: string } };
 
+const errorOf = (location: string) => new URL(location, "http://localhost").searchParams.get("error");
+
 const userCount = async (email: string) =>
   (await env.DB.prepare(`SELECT COUNT(*) AS n FROM "user" WHERE email = ?`).bind(email).first<{ n: number }>())!.n;
 
@@ -132,19 +134,24 @@ describe("Sign in with Apple", () => {
     expect(await (await getAuth(broken)).api.getSession({ headers: new Headers() })).toBeNull();
   });
 
-  it("signs an invited teacher in and keeps the name Apple sends only the first time", async () => {
+  it("signs an invited teacher in to the account they already use", async () => {
+    await invite("apple@example.com");
+    const before = await me(await signIn("apple@example.com"));
+
     const first = await appleSignIn("apple@example.com", { user: { name: { firstName: "Jana", lastName: "Nováková" } } });
     expect(first.location).toBe("/");
-    expect((await me(first.cookie)).user).toMatchObject({ email: "apple@example.com", name: "Jana Nováková" });
+    expect((await me(first.cookie)).user.id).toBe(before.user.id);
 
     vi.restoreAllMocks();
     const again = await appleSignIn("apple@example.com");
-    expect((await me(again.cookie)).user).toMatchObject({ email: "apple@example.com", name: "Jana Nováková" });
+    expect((await me(again.cookie)).user.id).toBe(before.user.id);
     expect(await userCount("apple@example.com")).toBe(1);
   });
 
   it("authenticates to Apple with a client secret signed by the configured key", async () => {
-    const { tokenRequests } = await appleSignIn("apple@example.com");
+    await invite("secret@example.com");
+    await signIn("secret@example.com");
+    const { tokenRequests } = await appleSignIn("secret@example.com");
     expect(tokenRequests).toHaveLength(1);
     expect(tokenRequests[0].get("client_id")).toBe("com.example.firstread.web");
     const [header, claims] = tokenRequests[0].get("client_secret")!.split(".");
@@ -152,23 +159,33 @@ describe("Sign in with Apple", () => {
     expect(decode(claims)).toMatchObject({ iss: "TEAM123456", sub: "com.example.firstread.web", aud: APPLE });
   });
 
-  it("joins the account a teacher already has from a magic link", async () => {
-    const before = await me(await signIn("linked@example.com"));
-    const viaApple = await appleSignIn("linked@example.com");
-    expect((await me(viaApple.cookie)).user.id).toBe(before.user.id);
+  it("waits until the invited teacher has used an email link once", async () => {
+    await invite("fresh@example.com");
+    const res = await appleSignIn("fresh@example.com");
+    expect(errorOf(res.location)).toBe("account_not_linked");
+    expect(res.cookie).toBe("");
   });
 
-  it("turns away an Apple account whose email is not invited", async () => {
+  it("never creates an account for someone who was not invited", async () => {
     const res = await appleSignIn("stranger@example.com");
     expect(new URL(res.location, "http://localhost").pathname).toBe("/login");
-    expect(new URL(res.location, "http://localhost").searchParams.get("error")).toBe("not_invited");
+    expect(errorOf(res.location)).toBe("NOT_INVITED");
     expect(res.cookie).toBe("");
     expect(await userCount("stranger@example.com")).toBe(0);
   });
 
   it("says so when Apple hid the email", async () => {
     const res = await appleSignIn("x7k2p9@privaterelay.appleid.com");
-    expect(new URL(res.location, "http://localhost").searchParams.get("error")).toBe("apple_private_email");
+    expect(errorOf(res.location)).toBe("APPLE_PRIVATE_EMAIL");
+    expect(res.cookie).toBe("");
+  });
+
+  it("keeps a teacher whose access was revoked out", async () => {
+    await invite("leaver@example.com");
+    await signIn("leaver@example.com");
+    await env.DB.prepare(`UPDATE "user" SET banned = 1 WHERE email = 'leaver@example.com'`).run();
+    const res = await appleSignIn("leaver@example.com");
+    expect(errorOf(res.location)).toBe("BANNED_USER");
     expect(res.cookie).toBe("");
   });
 });

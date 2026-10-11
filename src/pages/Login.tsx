@@ -5,7 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { api, ApiError } from "@/lib/api";
-import { appleSignInError } from "@/lib/signInError";
+
+// Better Auth sends people back here with ?error=... when a link or Apple
+// sign-in fails. Only these codes get their own text: the URL's
+// error_description is never shown, since anyone can craft such a link.
+const SIGN_IN_ERRORS: Record<string, string | null> = {
+  INVALID_TOKEN: "Odkaz už neplatí nebo byl použitý. Pošlete si nový.",
+  INVALID_INVITE: "Pozvánka už neplatí nebo byla použitá. Pošlete si přihlašovací odkaz.",
+  // Cancelled on Apple's page: nothing went wrong.
+  user_cancelled_authorize: null,
+  NOT_INVITED: "E-mail vašeho Apple účtu nemá pozvánku. Přihlaste se e-mailem, na který pozvánka přišla.",
+  APPLE_PRIVATE_EMAIL:
+    "Apple před námi skryl váš e-mail, takže nepoznáme vaši pozvánku. Přihlaste se e-mailem, nebo v nastavení Apple účtu u FirstRead ukončete přihlašování přes Apple a příště zvolte „Sdílet můj e-mail“.",
+  // An invited account whose mailbox isn't proven yet; Better Auth won't link Apple to it.
+  account_not_linked: "Poprvé se přihlaste odkazem z pozvánky nebo z e-mailu. Pak už půjde i Apple.",
+  BANNED_USER: "Přístup k FirstRead vám byl odebrán.",
+};
 
 function AppleLogo() {
   return (
@@ -17,19 +32,24 @@ function AppleLogo() {
 
 export function Login() {
   const [params, setParams] = useSearchParams();
-  const [email, setEmail] = useState("");
+  // The invitation email links here with ?email=...
+  const [email, setEmail] = useState(() => params.get("email") ?? "");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(() => appleSignInError(params.get("error")));
+  const [error, setError] = useState<string | null>(() => {
+    const code = params.get("error");
+    if (!code) return null;
+    return Object.hasOwn(SIGN_IN_ERRORS, code) ? SIGN_IN_ERRORS[code] : "Přihlášení se nepovedlo. Zkuste to prosím znovu.";
+  });
   const [apple, setApple] = useState(false);
 
   useEffect(() => {
     api.loginMethods().then((m) => setApple(m.apple), () => setApple(false));
   }, []);
 
-  // Apple sends a failed sign-in back with ?error=…; drop it so a reload starts clean.
+  // Read once: a reload should not show the error again.
   useEffect(() => {
-    if (params.has("error")) setParams({}, { replace: true });
+    if (params.has("email") || params.has("error")) setParams({}, { replace: true });
   }, [params, setParams]);
 
   async function submit(e: FormEvent) {
@@ -53,7 +73,7 @@ export function Login() {
       const { url } = await api.startAppleSignIn();
       window.location.assign(url);
     } catch {
-      setError(appleSignInError("start_failed"));
+      setError("Přihlášení přes Apple se nepovedlo. Zkuste to prosím znovu.");
       setBusy(false);
     }
   }

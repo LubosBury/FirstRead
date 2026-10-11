@@ -15,19 +15,20 @@ Design spec: [`docs/superpowers/specs/2026-10-10-firstread-design.md`](docs/supe
 - **Frontend:** React 19 + Vite + Tailwind 4, served as static assets by the Worker.
 - **API:** Hono on a Cloudflare Worker (`worker/`).
 - **Data:** D1 (SQLite) for users, credits, sheets and the image index. R2 for the image files.
-- **Auth:** Better Auth, invite-only. Passwordless magic links (sent with Resend), plus optional Sign in with Apple.
+- **Auth:** Better Auth, passwordless magic links (sent with Resend), invite-only. Admins invite people at `/admin`. Optional Sign in with Apple for invited people.
 - **Image AI:** OpenAI GPT Image or Google Gemini, chosen with `IMAGE_PROVIDER`. `mock` for local work.
 
 ## Local development
 
 ```bash
 npm install
-cp .dev.vars.example .dev.vars        # IMAGE_PROVIDER=mock, put your email in ALLOWED_EMAILS/ADMIN_EMAILS
+cp .dev.vars.example .dev.vars        # IMAGE_PROVIDER=mock
 npm run db:migrate:local
+npm run make-admin -- you@example.com # your local account, as admin
 npm run dev                           # http://localhost:5173
 ```
 
-- **Signing in locally:** there is no email delivery without `RESEND_API_KEY`. The magic link is printed in the dev server terminal; open it in the browser.
+- **Signing in locally:** there is no email delivery without `RESEND_API_KEY`. Magic links and invitations are printed in the dev server terminal; open the link in the browser.
 - **Mock provider:** `IMAGE_PROVIDER=mock` returns built-in line drawings and costs nothing. A prompt containing `[fail]` simulates a provider failure, to try the refund path.
 - **npm install workaround:** `.npmrc` sets `legacy-peer-deps=true` to work around an npm 10 resolver crash on this dependency set.
 
@@ -46,7 +47,7 @@ npm test            # app unit tests (jsdom) + Worker integration tests (workerd
 | Var | Meaning |
 |---|---|
 | `APP_URL` | Public URL, e.g. `https://firstread.bozkovo.org`. Used by auth for links and cookies. |
-| `MAIL_FROM` | Sender of the magic-link email, on a domain verified in Resend. |
+| `MAIL_FROM` | Sender of the sign-in and invitation emails, on a domain verified in Resend. |
 | `WELCOME_CREDITS` | Credits every new account gets once (default 5). |
 | `IMAGE_PROVIDER` | `openai`, `gemini` or `mock`. |
 | `OPENAI_IMAGE_MODEL` / `GEMINI_IMAGE_MODEL` | Model IDs. **Verify against the providers' current model lists before going live**; image model names change often. |
@@ -60,11 +61,14 @@ npm test            # app unit tests (jsdom) + Worker integration tests (workerd
 | `BETTER_AUTH_SECRET` | Long random string, e.g. `openssl rand -base64 32`. |
 | `RESEND_API_KEY` | Sends the sign-in emails. |
 | `OPENAI_API_KEY` / `GEMINI_API_KEY` | Whichever provider is active. |
-| `ALLOWED_EMAILS` | Comma-separated. Only these can sign in. |
-| `ADMIN_EMAILS` | Comma-separated. These can grant credits at `/admin`. |
 | `APPLE_CLIENT_ID` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY` | Optional. Sign in with Apple, see below. The button shows only when all four are set. |
 
-The two email lists are secrets, not vars, so they never land in this public repo.
+## Access
+
+- **Invite-only.** An admin enters an email at `/admin`. That creates the account (with the welcome credits) and emails an invitation valid for 7 days. Its link opens `/invite`, where one button signs the person in. Only the button spends the one-time token, so mail scanners that open links first cannot. Resending replaces the previous invitation. After that, people sign in with a magic link.
+- **Status** in `/admin`: *Čeká na přihlášení* until the first sign-in, then *Aktivní*.
+- **Revoking access** (*Odebrat přístup*) is a Better Auth ban. It ends all of the user's sessions, and no new link is sent. Sheets and images stay. *Vrátit přístup* undoes it.
+- **Admins** are users with the `admin` role. `npm run make-admin -- <email>` makes one locally, `--remote` in production, creating the user if needed. It is also the way back in if the last admin is locked out.
 
 ## Sign in with Apple
 
@@ -88,9 +92,10 @@ npx wrangler secret put APPLE_PRIVATE_KEY < AuthKey_XXXXXXXXXX.p8
 How it behaves:
 
 - **Client secret:** Apple wants a JWT signed with the `.p8` key, valid at most six months. The Worker signs a fresh one itself (30 days, renewed automatically), so there is nothing to rotate by hand.
-- **Invite-only:** the email Apple reports must be in `ALLOWED_EMAILS`, the same list as for magic links. It is checked on every Apple sign-in, so removing an address locks out its Apple sign-in too.
-- **Existing accounts:** a teacher who signed in by magic link and then uses Apple with the same email lands in the same account (same sheets, library and credits).
-- **Hide My Email:** Apple can hand out a relay address (`…@privaterelay.appleid.com`) instead of the real one. It never matches an invite, so the sign-in page explains what to do. To let such a teacher in anyway, add the relay address to `ALLOWED_EMAILS`.
+- **Invite-only:** Apple signs in to an account an admin created at `/admin`, matched by the email Apple reports. It never creates accounts. Revoking access at `/admin` blocks Apple too.
+- **First time:** Apple works once the teacher has opened the invitation or a magic link once. Until the mailbox is proven, Better Auth will not attach an Apple account, and the sign-in page says to use the email link first.
+- **Same account:** Apple and the email links lead to the same account (same sheets, library and credits).
+- **Hide My Email:** Apple can hand out a relay address (`…@privaterelay.appleid.com`) instead of the real one. It never matches an invite, so the sign-in page explains how to share the real email instead.
 - **Local development:** Apple does not accept `localhost` return URLs, so Apple sign-in can only be tried on a real HTTPS domain. Locally, leave the four values empty and the button stays hidden.
 - **Adoption:** `SELECT COUNT(DISTINCT userId) FROM account WHERE providerId = 'apple'` counts teachers who have used Apple at least once.
 
@@ -118,7 +123,7 @@ R2 must be enabled once per account in the dashboard (R2 Object Storage) before 
 9. **Custom domain:** the domain's DNS zone must be on Cloudflare. If it isn't:
    - Copy every existing record first (website A/CNAME, MX, mail TXT), then switch the nameservers.
    - Then go to Workers → `firstread` → Settings → Domains & Routes → Add → Custom domain.
-10. Sign in once, then top up accounts at `/admin`.
+10. Make yourself admin with `npm run make-admin -- <your email> --remote`, sign in, then invite people and top up credits at `/admin`.
 
 Production checks after deploy:
 

@@ -1,5 +1,12 @@
+import { env } from "cloudflare:test";
 import { exports } from "cloudflare:workers";
 import { vi } from "vitest";
+import { getAuth } from "../auth";
+
+/** Creates a user the way an admin's invite does. Server-side, so no permission check. */
+export async function invite(email: string, role: "user" | "admin" = "user"): Promise<void> {
+  await (await getAuth(env)).api.createUser({ body: { email, name: "", role } });
+}
 
 export const ORIGIN = "http://localhost";
 
@@ -17,8 +24,9 @@ export const json = (body: unknown): RequestInit => ({
 });
 
 /**
- * Signs in like a person would: request a link, "open the email" (locally the
- * mailer prints it), follow the link, keep the cookies.
+ * Signs in like a person would (the user must be invited first): request a
+ * link, "open the email" (locally the mailer prints it), follow the link, keep
+ * the cookies.
  */
 export async function signIn(email: string): Promise<string> {
   const log = vi.spyOn(console, "log").mockImplementation(() => {});

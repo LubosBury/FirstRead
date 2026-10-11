@@ -1,8 +1,21 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { APIError, createAuthMiddleware } from "better-auth/api";
+import { admin } from "better-auth/plugins/admin";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { appleClientSecret, appleConfig, isAppleRelayEmail } from "./apple";
-import { isAllowedEmail } from "./env";
+import { ensureWallet } from "./credits";
+import { intVar } from "./env";
+import { inviteLink } from "./invite-link";
 import { magicLinkMail, sendMail } from "./mail";
+
+/** Invite-only: a link goes only to a user an admin created and hasn't banned. */
+async function mayRequestLink(db: D1Database, email: string): Promise<boolean> {
+  const row = await db
+    .prepare(`SELECT 1 FROM "user" WHERE lower(email) = ? AND COALESCE(banned, 0) = 0`)
+    .bind(email.trim().toLowerCase())
+    .first();
+  return row !== null;
+}
 
 const APPLE_ORIGIN = "https://appleid.apple.com";
 
@@ -19,28 +32,51 @@ export function authOptions(env: Env, apple?: { clientId: string; clientSecret: 
       expiresIn: 60 * 60 * 24 * 60,
       updateAge: 60 * 60 * 24,
     },
-    user: {
-      // Invite-only for every sign-in method. Better Auth calls this before it
-      // creates a user, links Apple to an existing one, and on every Apple
-      // sign-in with the email Apple reports now.
-      validateUserInfo: ({ user, source }) => {
-        const email = user.email ?? "";
-        if (isAllowedEmail(env, email)) return;
-        if (source.oauth?.providerId === "apple" && isAppleRelayEmail(email)) {
-          return { error: "apple_private_email", errorDescription: "Apple hid the email, so it cannot match an invite." };
+    hooks: {
+      // Say so up front instead of letting someone wait for an email that will
+      // never come. Runs before the endpoint, so strangers leave no token behind.
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/sign-in/magic-link") return;
+        if (!(await mayRequestLink(env.DB, String(ctx.body?.email ?? "")))) {
+          throw new APIError("FORBIDDEN", {
+            code: "NOT_INVITED",
+            message: "Tento e-mail zatím nemá přístup. Požádejte o pozvánku.",
+          });
         }
-        return { error: "not_invited", errorDescription: "This email is not invited." };
+      }),
+    },
+    user: {
+      // Accounts come from invites only: Apple may sign in to one, never create
+      // one. Better Auth asks this before it would create a user from Apple.
+      validateUserInfo: ({ user, source }) => {
+        if (source.action !== "create-user" || source.method !== "oauth") return;
+        if (isAppleRelayEmail(user.email ?? "")) {
+          return { error: "APPLE_PRIVATE_EMAIL", errorDescription: "Apple hid the email, so it cannot match an invite." };
+        }
+        return { error: "NOT_INVITED", errorDescription: "This email is not invited." };
       },
     },
     socialProviders: apple ? { apple: { clientId: apple.clientId, clientSecret: apple.clientSecret } } : {},
+    databaseHooks: {
+      user: {
+        create: {
+          // Welcome credits when the account is created, i.e. at invite time.
+          // Opening the wallet later would lose them if an admin granted first.
+          after: async (user) => {
+            await ensureWallet(env.DB, user.id, intVar(env.WELCOME_CREDITS, 5));
+          },
+        },
+      },
+    },
     plugins: [
+      admin(),
+      inviteLink(),
       magicLink({
         expiresIn: 60 * 15,
         storeToken: "hashed",
+        // Accounts come from invites only.
+        disableSignUp: true,
         sendMagicLink: async ({ email, url }) => {
-          // The route rejects unknown addresses before we get here; this is the
-          // backstop so no code path mails a stranger.
-          if (!isAllowedEmail(env, email)) return;
           await sendMail(env, magicLinkMail(email, url));
         },
       }),

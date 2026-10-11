@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import type { AppEnv } from "../app";
+import { isAdmin, type AppEnv } from "../app";
 import { ensureWallet, getBalance } from "../credits";
-import { intVar, isAdminEmail } from "../env";
+import { intVar } from "../env";
 import { engineOptions } from "../imaging/engines";
 import { creditCost, resolveEngine } from "../settings";
 
@@ -11,16 +11,16 @@ me.get("/me", async (c) => {
   const user = c.get("user");
   // First visit opens the wallet with the welcome credits.
   await ensureWallet(c.env.DB, user.id, intVar(c.env.WELCOME_CREDITS, 5));
-  const isAdmin = isAdminEmail(c.env, user.email);
+  const admin = isAdmin(user);
   const engine = await resolveEngine(c.env);
   return c.json({
     user,
     balance: await getBalance(c.env.DB, user.id),
-    isAdmin,
+    isAdmin: admin,
     // What the next image costs on the current default engine.
     costs: { main: creditCost(c.env, engine, "main"), icon: creditCost(c.env, engine, "icon") },
     // Admins can compare engines on the same prompt; everyone else gets the default.
-    ...(isAdmin && { engines: engineOptions(), defaultEngine: engine }),
+    ...(admin && { engines: engineOptions(), defaultEngine: engine }),
   });
 });
 
