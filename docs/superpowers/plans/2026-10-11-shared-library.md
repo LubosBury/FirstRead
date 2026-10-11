@@ -23,7 +23,7 @@ Spec: [`docs/superpowers/specs/2026-10-11-shared-library-design.md`](../specs/20
 ### Task 1: Worker - share, list and read shared pictures
 
 **Files:**
-- Create: `migrations/0003_shared_images.sql`
+- Create: `migrations/0004_shared_images.sql`
 - Modify: `worker/images.ts` (row type, `publicImage`, `saveImage`, new `getReadableImage`)
 - Modify: `worker/routes/images.ts` (read via `getReadableImage`, new `GET /shared-images`)
 - Modify: `worker/routes/admin.ts` (new `PUT /admin/images/:id/shared`)
@@ -121,7 +121,7 @@ describe("shared library", () => {
 Run: `npx vitest run --project worker -t "shared library"`
 Expected: FAIL (404 on `/admin/images/...`, missing `shared` fields).
 
-- [ ] **Step 3: Add the migration** `migrations/0003_shared_images.sql`:
+- [ ] **Step 3: Add the migration** `migrations/0004_shared_images.sql`:
 
 ```sql
 -- The free library: admins share their own pictures with everyone signed in.
@@ -229,7 +229,7 @@ Expected: PASS, including the existing "refuses someone else's reference image" 
 
 ```bash
 npm run lint && npm run typecheck
-git add migrations/0003_shared_images.sql worker/
+git add migrations/0004_shared_images.sql worker/
 git commit -m "Let admins share pictures into a free library"
 ```
 
@@ -406,7 +406,7 @@ Expected: all green.
 
 - [ ] **Step 6: Look at it in the browser**
 
-Run the app locally (`IMAGE_PROVIDER=mock`, admin email in `ADMIN_EMAILS`), sign in via the printed magic link, upload a picture, share it, then sign in as a second user and open the picker: the "Knihovna zdarma" tab is there, picking puts the picture on the sheet. Screenshot both.
+Run the app locally (`IMAGE_PROVIDER=mock`, an admin made with `npm run make-admin`), sign in via the printed magic link, upload a picture, share it, then sign in as a second user and open the picker: the "Knihovna zdarma" tab is there, picking puts the picture on the sheet. Screenshot both.
 
 - [ ] **Step 7: Commit**
 

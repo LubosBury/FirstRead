@@ -54,7 +54,7 @@ export function Library() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <h1 className="mr-auto text-2xl font-extrabold">Moje obrázky</h1>
         <input
           ref={fileRef}
@@ -83,7 +83,7 @@ export function Library() {
       ) : images.length === 0 ? (
         <p className="text-muted">Zatím žádné obrázky.</p>
       ) : (
-        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+        <ul className="grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-4 sm:gap-x-4 lg:grid-cols-6">
           {images.map((img, i) => (
             <li key={img.id}>
               <button type="button" className="block w-full" onClick={() => setViewing(i)} aria-label="Zobrazit ve velkém">
@@ -107,15 +107,20 @@ export function Library() {
                     aria-pressed={img.shared}
                     title={img.shared ? "Je v knihovně zdarma. Kliknutím ho z ní odeberete." : "Přidat do knihovny zdarma pro všechny"}
                     className={cn(
-                      "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                      "-mt-0.5 shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold",
                       img.shared ? "bg-brand-soft text-brand" : "border border-line text-muted hover:text-brand",
                     )}
                   >
                     {img.shared ? "Sdílený" : "Sdílet"}
                   </button>
                 )}
-                <button type="button" aria-label="Smazat" onClick={() => remove(img)} className="text-muted hover:text-danger">
-                  <Trash2 className="h-3.5 w-3.5" />
+                <button
+                  type="button"
+                  aria-label="Smazat"
+                  onClick={() => remove(img)}
+                  className="-mt-1.5 -mr-2 shrink-0 rounded-lg p-2 text-muted hover:text-danger"
+                >
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </li>

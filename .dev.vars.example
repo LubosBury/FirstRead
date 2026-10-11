@@ -7,6 +7,9 @@ RESEND_API_KEY=
 IMAGE_PROVIDER=mock
 OPENAI_API_KEY=
 GEMINI_API_KEY=
-# Comma-separated. Only these addresses can sign in; admins can grant credits.
-ALLOWED_EMAILS=you@example.com
-ADMIN_EMAILS=you@example.com
+# Sign in with Apple. Leave empty to hide the button. Apple does not accept
+# localhost return URLs, so this only works on a real HTTPS domain.
+APPLE_CLIENT_ID=
+APPLE_TEAM_ID=
+APPLE_KEY_ID=
+APPLE_PRIVATE_KEY=

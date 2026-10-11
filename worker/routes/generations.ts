@@ -1,8 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { badRequest, notFound, type AppEnv } from "../app";
+import { badRequest, isAdmin, notFound, type AppEnv } from "../app";
 import { completeGeneration, failGeneration, getBalance, InsufficientCreditsError, startGeneration } from "../credits";
-import { isAdminEmail } from "../env";
 import { getReadableImage, publicImage, readImageBytes, saveImage, sniffImageMime } from "../images";
 import { ENGINE_IDS } from "../imaging/engines";
 import { buildPrompt } from "../imaging/prompts";
@@ -28,7 +27,7 @@ generations.post("/generations", async (c) => {
   }
   const { slot, prompt, referenceImageId, engine } = parsed.data;
   const user = c.get("user");
-  if (engine && !isAdminEmail(c.env, user.email)) {
+  if (engine && !isAdmin(user)) {
     return c.json({ error: "forbidden", message: "Výběr modelu je jen pro správce." }, 403);
   }
 

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ImageSlot } from "@/components/ImageSlot";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
+import { Stepper } from "@/components/ui/stepper";
 import { FONT_IDS, FONTS } from "@/lib/fonts";
 import { czechMonthName, daysInMonth } from "@/lib/months";
 import { randomSeed } from "@/lib/prng";
@@ -27,8 +28,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function Check({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 text-sm">
-      <input type="checkbox" className="h-4 w-4 accent-brand" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    <label className="flex min-h-10 cursor-pointer items-center gap-2.5 text-sm">
+      <input type="checkbox" className="h-5 w-5 shrink-0 accent-brand" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       {children}
     </label>
   );
@@ -63,7 +64,7 @@ function Segmented<T extends string>({
             aria-pressed={value === o.id}
             onClick={() => onChange(o.id)}
             className={cn(
-              "rounded-lg py-1.5 text-sm font-semibold",
+              "min-h-10 rounded-lg px-1 text-sm font-semibold md:min-h-8",
               value === o.id ? "bg-surface shadow-sm" : "text-muted hover:text-ink",
             )}
           >
@@ -112,7 +113,7 @@ export function ReadingChallengeEditor({ params: p, onChange }: EditorProps<Read
   return (
     <div className="space-y-5">
       <Section title="Měsíc">
-        <div className="grid grid-cols-[1fr_6rem] gap-3">
+        <div className="grid grid-cols-[1fr_8.5rem] gap-3">
           <div>
             <Label htmlFor="month">Měsíc</Label>
             <Select id="month" value={p.month} onChange={(e) => setMonth(p.year, Number(e.target.value))}>
@@ -125,29 +126,12 @@ export function ReadingChallengeEditor({ params: p, onChange }: EditorProps<Read
           </div>
           <div>
             <Label htmlFor="year">Rok</Label>
-            <Input
-              id="year"
-              type="number"
-              min={2000}
-              max={2100}
-              value={p.year}
-              onChange={(e) => {
-                const year = Number(e.target.value);
-                if (year >= 2000 && year <= 2100) setMonth(year, p.month);
-              }}
-            />
+            <Stepper id="year" min={2000} max={2100} value={p.year} onChange={(year) => setMonth(year, p.month)} />
           </div>
         </div>
         <div>
           <Label htmlFor="count">Počet obrázků k vybarvení</Label>
-          <Input
-            id="count"
-            type="number"
-            min={1}
-            max={62}
-            value={p.count}
-            onChange={(e) => set({ count: Math.max(1, Math.min(62, Number(e.target.value) || 1)) })}
-          />
+          <Stepper id="count" min={1} max={62} value={p.count} onChange={(count) => set({ count })} className="w-36" />
           <p className="mt-1 text-xs text-muted">Podle počtu dní v měsíci ({daysInMonth(p.year, p.month)}).</p>
         </div>
       </Section>
@@ -196,7 +180,7 @@ export function ReadingChallengeEditor({ params: p, onChange }: EditorProps<Read
             step={0.05}
             value={p.mainImage.scale}
             onChange={(e) => set({ mainImage: { ...p.mainImage, scale: Number(e.target.value) } })}
-            className="w-full accent-brand"
+            className="h-8 w-full accent-brand"
           />
         </div>
       </Section>

@@ -3,7 +3,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { MOCK_ICON_PNG_B64 } from "./imaging/fixtures";
 import { fromBase64 } from "./imaging/base64";
 import worker from "./index";
-import { api, json, signIn } from "./test/session";
+import { api, invite, json, signIn } from "./test/session";
 
 const PNG = fromBase64(MOCK_ICON_PNG_B64);
 const upload = (cookie: string, body: Uint8Array | string, type = "image/png") =>
@@ -14,6 +14,9 @@ let other: string;
 let admin: string;
 
 beforeAll(async () => {
+  await invite("teacher@example.com");
+  await invite("other@example.com");
+  await invite("admin@example.com", "admin");
   teacher = await signIn("teacher@example.com");
   other = await signIn("other@example.com");
   admin = await signIn("admin@example.com");
@@ -21,9 +24,34 @@ beforeAll(async () => {
 
 describe("auth", () => {
   it("refuses to send a link to an address that is not invited", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
     const res = await api("/auth/sign-in/magic-link", json({ email: "stranger@example.com", callbackURL: "/" }));
+    const mailed = log.mock.calls.some((c) => String(c[0]).includes("stranger@example.com"));
+    log.mockRestore();
     expect(res.status).toBe(403);
-    expect(((await res.json()) as { error: string }).error).toBe("not_invited");
+    expect(((await res.json()) as { code: string }).code).toBe("NOT_INVITED");
+    expect(mailed).toBe(false);
+  });
+
+  it("refuses to send a link to a banned user", async () => {
+    await invite("banned@example.com");
+    await env.DB.prepare(`UPDATE "user" SET banned = 1 WHERE email = 'banned@example.com'`).run();
+    const res = await api("/auth/sign-in/magic-link", json({ email: "banned@example.com", callbackURL: "/" }));
+    expect(res.status).toBe(403);
+  });
+
+  it("does not create an account from a link", async () => {
+    const count = () => env.DB.prepare(`SELECT COUNT(*) AS n FROM "user"`).first<number>("n");
+    const before = await count();
+    await api("/auth/sign-in/magic-link", json({ email: "walk-in@example.com", callbackURL: "/" }));
+    expect(await count()).toBe(before);
+  });
+
+  it("keeps the welcome credits when an admin grants credits before the first sign-in", async () => {
+    await invite("early@example.com");
+    expect((await api("/admin/grant", { ...json({ email: "early@example.com", amount: 10 }), cookie: admin })).status).toBe(200);
+    const cookie = await signIn("early@example.com");
+    expect(((await (await api("/me", { cookie })).json()) as { balance: number }).balance).toBe(15);
   });
 
   it("requires a session for the app API", async () => {
@@ -323,6 +351,10 @@ describe("admin", () => {
     expect((await api("/admin/grant", { ...json({ email: "teacher@example.com", amount: 5 }), cookie: teacher })).status).toBe(403);
   });
 
+  it("keeps the plugin's own admin endpoints closed to regular users", async () => {
+    expect((await api("/auth/admin/list-users", { cookie: teacher })).status).toBe(403);
+  });
+
   it("lists users and grants credits by email", async () => {
     const users = (await (await api("/admin/users", { cookie: admin })).json()) as { email: string; balance: number }[];
     const before = users.find((u) => u.email === "teacher@example.com")!.balance;
@@ -414,6 +446,129 @@ describe("shared library", () => {
     const mains = await library(teacher, "main");
     expect(mains.some((i) => i.id === main.id)).toBe(true);
     expect(mains.some((i) => i.id === upl.id)).toBe(true);
+  });
+});
+
+describe("access", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  type Row = { id: string; email: string; banned: boolean; emailVerified: boolean };
+  const row = async (email: string) =>
+    ((await (await api("/admin/users", { cookie: admin })).json()) as Row[]).find((u) => u.email === email)!;
+  const inviteVia = (email: string, cookie = admin) => api("/admin/invites", { ...json({ email }), cookie });
+  const post = (path: string, cookie: string) => api(path, { method: "POST", cookie });
+  /** Invites through /admin and returns the token from the printed email. */
+  const inviteToken = async (email: string) => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const res = await inviteVia(email);
+    const mail = log.mock.calls.map((c) => String(c[0])).find((s) => s.includes(`to=${email}`)) ?? "";
+    log.mockRestore();
+    expect(res.status).toBeLessThan(300);
+    return mail.match(/\/invite\?token=([A-Za-z0-9]+)/)?.[1] ?? "";
+  };
+  const accept = (token: string) => api("/auth/invite/accept", json({ token }));
+  const cookieOf = (res: Response) => res.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+
+  it("invites by email; the user is pending until the first sign-in", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const res = await inviteVia(" New.Teacher@Example.com ");
+    const mail = log.mock.calls.map((c) => String(c[0])).find((s) => s.includes("to=new.teacher@example.com"));
+    log.mockRestore();
+
+    expect(res.status).toBe(201);
+    expect(mail).toContain("Pozvánka do FirstReader");
+    expect(mail).toMatch(/http:\/\/localhost\/invite\?token=[A-Za-z0-9]{32}&email=new\.teacher%40example\.com/);
+    expect(await row("new.teacher@example.com")).toMatchObject({ emailVerified: false, banned: false });
+
+    await signIn("new.teacher@example.com");
+    expect((await row("new.teacher@example.com")).emailVerified).toBe(true);
+  });
+
+  it("signs the invited person in from the invitation, once", async () => {
+    const token = await inviteToken("oneclick@example.com");
+    const res = await accept(token);
+    expect(res.status).toBe(200);
+    expect((await api("/me", { cookie: cookieOf(res) })).status).toBe(200);
+    expect((await row("oneclick@example.com")).emailVerified).toBe(true);
+
+    const again = await accept(token);
+    expect(again.status).toBe(400);
+    expect(((await again.json()) as { code: string }).code).toBe("INVALID_INVITE");
+  });
+
+  it("does not consume the token on a GET, as a link scanner would send", async () => {
+    const token = await inviteToken("scanned@example.com");
+    expect((await api(`/auth/invite/accept?token=${token}`)).status).not.toBe(200);
+    expect((await accept(token)).status).toBe(200);
+  });
+
+  it("refuses an expired invitation", async () => {
+    const token = await inviteToken("late@example.com");
+    const { id } = await row("late@example.com");
+    await env.DB.prepare(`UPDATE verification SET expiresAt = ? WHERE identifier LIKE 'invite:%' AND value = ?`)
+      .bind(new Date(Date.now() - 60_000).toISOString(), id)
+      .run();
+    expect((await accept(token)).status).toBe(400);
+  });
+
+  it("keeps only the latest invitation valid", async () => {
+    const first = await inviteToken("twice@example.com");
+    const second = await inviteToken("twice@example.com");
+    expect((await accept(first)).status).toBe(400);
+    expect((await accept(second)).status).toBe(200);
+  });
+
+  it("gives a banned invitee no session", async () => {
+    const token = await inviteToken("blocked@example.com");
+    const { id } = await row("blocked@example.com");
+    expect((await post(`/admin/users/${id}/ban`, admin)).status).toBe(204);
+    const res = await accept(token);
+    expect(res.status).toBe(403);
+    expect(res.headers.getSetCookie().some((c) => c.includes("session_token=") && !c.includes("Max-Age=0"))).toBe(false);
+  });
+
+  it("is not reachable for issuing tokens over HTTP", async () => {
+    expect((await api("/auth/invite/create", { ...json({ userId: "x" }), cookie: admin })).status).toBe(404);
+  });
+
+  it("resends to a pending user and refuses one who already has access", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    expect((await inviteVia("pending@example.com")).status).toBe(201);
+    const again = await inviteVia("pending@example.com");
+    expect(again.status).toBe(200);
+    expect(((await again.json()) as { resent: boolean }).resent).toBe(true);
+    expect((await inviteVia("teacher@example.com")).status).toBe(409);
+  });
+
+  it("rejects an invalid email", async () => {
+    expect((await inviteVia("not-an-email")).status).toBe(400);
+  });
+
+  it("revokes access: sessions end and no new link; restoring lets the user back in", async () => {
+    await invite("leaver@example.com");
+    const cookie = await signIn("leaver@example.com");
+    const { id } = await row("leaver@example.com");
+
+    expect((await post(`/admin/users/${id}/ban`, admin)).status).toBe(204);
+    expect((await api("/me", { cookie })).status).toBe(401);
+    expect((await api("/auth/sign-in/magic-link", json({ email: "leaver@example.com", callbackURL: "/" }))).status).toBe(403);
+    expect((await row("leaver@example.com")).banned).toBe(true);
+    expect((await inviteVia("leaver@example.com")).status).toBe(409);
+
+    expect((await post(`/admin/users/${id}/unban`, admin)).status).toBe(204);
+    expect((await api("/me", { cookie: await signIn("leaver@example.com") })).status).toBe(200);
+  });
+
+  it("does not let an admin revoke their own access", async () => {
+    const { id } = await row("admin@example.com");
+    expect((await post(`/admin/users/${id}/ban`, admin)).status).toBe(400);
+  });
+
+  it("is closed to non-admins", async () => {
+    const { id } = await row("other@example.com");
+    expect((await inviteVia("someone@example.com", teacher)).status).toBe(403);
+    expect((await post(`/admin/users/${id}/ban`, teacher)).status).toBe(403);
+    expect((await post(`/admin/users/${id}/unban`, teacher)).status).toBe(403);
   });
 });
 

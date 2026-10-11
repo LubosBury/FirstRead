@@ -8,7 +8,7 @@ Every image belongs to one user, and every read is checked against that owner (`
 
 Goal: an admin marks some of their own pictures as shared. Every signed-in user can then pick them, for free, in the image picker.
 
-Sign-in is invite-only (`ALLOWED_EMAILS`), so "free after sign-in" means free for every invited user. Using an existing picture already costs nothing; only generating does.
+Sign-in is invite-only (admins invite people from `/admin`), so "free after sign-in" means free for every invited user. Using an existing picture already costs nothing; only generating does.
 
 Hypothesis (judgment, not measured): a ready-made library gets new users to a finished sheet faster, without spending their welcome credits. The metric for that is the share of new users who export a PDF in their first session, not clicks in the library. Measuring it is out of scope here.
 
@@ -29,7 +29,7 @@ Hypothesis (judgment, not measured): a ready-made library gets new users to a fi
 
 ## Data
 
-Migration `0003_shared_images.sql` adds two nullable columns to `images`:
+Migration `0004_shared_images.sql` adds two nullable columns to `images`:
 
 - `shared_at`: set = listed in the library now. Cleared on unshare.
 - `first_shared_at`: set on the first share and never cleared. It makes the picture readable by any signed-in user, which is what keeps other users' sheets working after an unshare.

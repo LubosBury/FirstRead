@@ -25,11 +25,11 @@
   // Refunds generations whose client disconnected mid-flight.
   "triggers": { "crons": ["*/15 * * * *"] },
   // Non-secret settings. Secrets (BETTER_AUTH_SECRET, RESEND_API_KEY,
-  // OPENAI_API_KEY, GEMINI_API_KEY, ALLOWED_EMAILS, ADMIN_EMAILS) go in via
-  // `wrangler secret put` in production and `.dev.vars` locally.
+  // OPENAI_API_KEY, GEMINI_API_KEY, APPLE_*) go in via `wrangler secret put` in
+  // production and `.dev.vars` locally.
   "vars": {
     "APP_URL": "https://product-gnome.com",
-    "MAIL_FROM": "FirstRead <prihlaseni@product-gnome.com>",
+    "MAIL_FROM": "FirstReader <prihlaseni@product-gnome.com>",
     "WELCOME_CREDITS": "5",
     "IMAGE_PROVIDER": "openai",
     "OPENAI_IMAGE_MODEL": "gpt-image-2",

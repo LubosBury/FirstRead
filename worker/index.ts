@@ -1,8 +1,7 @@
 import { Hono } from "hono";
 import { requireUser, type AppEnv } from "./app";
-import { getAuth } from "./auth";
+import { appleEnabled, getAuth } from "./auth";
 import { refundStaleGenerations } from "./credits";
-import { isAllowedEmail } from "./env";
 import { admin } from "./routes/admin";
 import { generations } from "./routes/generations";
 import { images } from "./routes/images";
@@ -13,17 +12,10 @@ const app = new Hono<AppEnv>().basePath("/api");
 
 app.get("/health", (c) => c.json({ ok: true }));
 
-// Invite-only: say so up front instead of letting someone wait for an email
-// that will never come. (The mailer itself also refuses unknown addresses.)
-app.post("/auth/sign-in/magic-link", async (c) => {
-  const body = (await c.req.raw.clone().json().catch(() => null)) as { email?: unknown } | null;
-  const email = typeof body?.email === "string" ? body.email : "";
-  if (!isAllowedEmail(c.env, email)) {
-    return c.json({ error: "not_invited", message: "Tento e-mail zatím nemá přístup. Požádejte o pozvánku." }, 403);
-  }
-  return getAuth(c.env).handler(c.req.raw);
-});
-app.on(["GET", "POST"], "/auth/*", (c) => getAuth(c.env).handler(c.req.raw));
+// Lets the sign-in page show the Apple button only once Apple is configured.
+app.get("/login-methods", async (c) => c.json({ apple: await appleEnabled(c.env) }));
+
+app.on(["GET", "POST"], "/auth/*", async (c) => (await getAuth(c.env)).handler(c.req.raw));
 
 const authed = new Hono<AppEnv>();
 authed.use("*", requireUser);

@@ -53,19 +53,28 @@ function PickGrid({
   if (images === null) return <Loader2 className="mx-auto my-8 h-6 w-6 animate-spin text-brand" />;
   if (images.length === 0) return <p className="py-8 text-center text-muted">{empty}</p>;
   return (
-    <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {images.map((img) => (
         <li key={img.id} className="group relative">
           <button type="button" onClick={() => onPick(img)} className="block w-full" title={img.label ?? undefined}>
             <Thumb src={img.url} className="aspect-square w-full group-hover:border-brand" />
           </button>
-          <div className="mt-1 flex justify-between">
-            <button type="button" className="text-xs font-semibold text-brand hover:underline" onClick={() => onReference(img)}>
+          <div className="mt-1 flex items-center justify-between gap-1">
+            <button
+              type="button"
+              className="-ml-1 min-h-9 rounded-lg px-1 text-left text-xs font-semibold text-brand hover:underline"
+              onClick={() => onReference(img)}
+            >
               Předloha pro AI
             </button>
             {onDelete && (
-              <button type="button" aria-label="Smazat" className="text-muted hover:text-danger" onClick={() => onDelete(img)}>
-                <Trash2 className="h-3.5 w-3.5" />
+              <button
+                type="button"
+                aria-label="Smazat"
+                className="-mr-1 shrink-0 rounded-lg p-2 text-muted hover:text-danger"
+                onClick={() => onDelete(img)}
+              >
+                <Trash2 className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -189,11 +198,11 @@ export function ImagePicker({
               setError(null);
             }}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-center text-sm leading-tight font-semibold",
+              "flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-xs font-semibold sm:min-h-0 sm:flex-row sm:gap-1.5 sm:px-2 sm:py-2 sm:text-sm",
               tab === t.id ? "bg-surface shadow-sm" : "text-muted hover:text-ink",
             )}
           >
-            <t.icon className="hidden h-4 w-4 shrink-0 sm:block" />
+            <t.icon className="h-4 w-4" />
             {t.label}
           </button>
         ))}
@@ -326,7 +335,7 @@ export function ImagePicker({
               className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-line px-4 py-10 text-muted hover:border-brand hover:text-brand"
             >
               {busy ? <Loader2 className="h-8 w-8 animate-spin" /> : <ImagePlus className="h-8 w-8" />}
-              <span className="font-semibold">Vyberte obrázek z počítače</span>
+              <span className="font-semibold">Vyberte obrázek z počítače nebo telefonu</span>
               <span className="text-xs">PNG, JPG nebo WebP, nejvýš 10 MB</span>
             </button>
           )}
