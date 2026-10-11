@@ -62,8 +62,9 @@ export function Admin() {
       if (action === "resend") await api.adminInvite(u.email);
       else if (action === "ban") await api.adminBan(u.id);
       else await api.adminUnban(u.id);
-      setAccessMessage(done[action](u.email));
+      // Reload first, so the confirmation never sits next to a stale row.
       await load();
+      setAccessMessage(done[action](u.email));
     } catch (err) {
       setAccessMessage(err instanceof ApiError ? err.message : "Nepovedlo se.");
     } finally {
@@ -105,7 +106,7 @@ export function Admin() {
                       <td className={cn("whitespace-nowrap px-4 py-2", statusClass[status])}>{ACCESS_LABEL[status]}</td>
                       <td className="px-4 py-2 text-right font-bold">{u.balance}</td>
                       <td className="px-4 py-2 text-right">{u.generated}</td>
-                      <td className="px-4 py-2 text-muted">{dateFmt.format(new Date(u.createdAt))}</td>
+                      <td className="whitespace-nowrap px-4 py-2 text-muted">{dateFmt.format(new Date(u.createdAt))}</td>
                       <td className="whitespace-nowrap px-4 py-2 text-right">
                         {u.id !== me?.user.id &&
                           (status === "revoked" ? (
