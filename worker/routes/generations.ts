@@ -6,6 +6,7 @@ import { intVar, isAdminEmail } from "../env";
 import { getOwnedImage, publicImage, readImageBytes, saveImage, sniffImageMime } from "../images";
 import { ENGINE_IDS } from "../imaging/engines";
 import { buildPrompt } from "../imaging/prompts";
+import { getDefaultEngine } from "../settings";
 import { getProvider, MSG, ProviderError, type ImageInput } from "../imaging/provider";
 
 export const generations = new Hono<AppEnv>();
@@ -33,7 +34,8 @@ generations.post("/generations", async (c) => {
 
   let provider;
   try {
-    provider = getProvider(c.env, { engine });
+    // An admin's explicit pick, else the default chosen in Správa, else the Worker vars.
+    provider = getProvider(c.env, { engine: engine ?? (await getDefaultEngine(c.env.DB)) ?? undefined });
   } catch (e) {
     console.error("image provider unavailable", e);
     return c.json({ error: "unavailable", message: MSG.config }, 503);

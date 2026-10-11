@@ -182,7 +182,7 @@ describe("engine switch", () => {
 
   it("lists engines for admins only", async () => {
     const forAdmin = (await (await api("/me", { cookie: admin })).json()) as { engines?: { id: string; label: string }[] };
-    expect(forAdmin.engines?.map((e) => e.id)).toContain("gemini-nano-banana-2.1");
+    expect(forAdmin.engines?.map((e) => e.id)).toEqual(["openai-low", "openai-medium"]);
     const forTeacher = (await (await api("/me", { cookie: teacher })).json()) as { engines?: unknown };
     expect(forTeacher.engines).toBeUndefined();
   });
@@ -208,25 +208,73 @@ describe("engine switch", () => {
     expect(JSON.parse(calls[0].body).quality).toBe("low");
   });
 
-  it("generates with a chosen Gemini model for an admin", async () => {
-    const calls = fakeProviders();
-    const res = await api("/generations", {
-      ...json({ slot: "main", prompt: "medvídek", engine: "gemini-nano-banana-2.1" }),
-      cookie: admin,
-    });
-    expect(res.status).toBe(201);
-    expect(calls[0].url).toContain("/models/gemini-nano-banana-2.1:generateContent");
-    const body = (await res.json()) as { source: { provider: string; model: string } };
-    expect(body.source).toMatchObject({ provider: "gemini", model: "gemini-nano-banana-2.1" });
+  it("no longer offers Gemini", async () => {
+    const res = await api("/generations", { ...json({ slot: "icon", prompt: "x", engine: "gemini-nano-banana-2.1" }), cookie: admin });
+    expect(res.status).toBe(400);
   });
 
   it("shows where each library image came from", async () => {
     const list = (await (await api("/images", { cookie: admin })).json()) as {
       origin: string;
-      source: { provider: string } | null;
+      source: { provider: string; quality: string | null } | null;
     }[];
-    expect(list.some((i) => i.source?.provider === "gemini")).toBe(true);
+    expect(list.some((i) => i.source?.provider === "openai" && i.source.quality === "low")).toBe(true);
     expect(list.filter((i) => i.origin === "upload").every((i) => i.source === null)).toBe(true);
+  });
+});
+
+describe("default engine setting", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const put = (cookie: string, defaultEngine: unknown) =>
+    api("/admin/settings", { ...json({ defaultEngine }), method: "PUT", cookie });
+
+  it("is closed to non-admins", async () => {
+    expect((await api("/admin/settings", { cookie: teacher })).status).toBe(403);
+    expect((await put(teacher, "openai-medium")).status).toBe(403);
+  });
+
+  it("rejects an unknown engine", async () => {
+    expect((await put(admin, "gemini-3.1-flash-image")).status).toBe(400);
+  });
+
+  it("starts from the configured default and can be changed", async () => {
+    const before = (await (await api("/admin/settings", { cookie: admin })).json()) as { defaultEngine: string | null };
+    expect(before.defaultEngine).toBeNull(); // tests run on the mock provider, which is no listed engine
+
+    expect((await put(admin, "openai-low")).status).toBe(200);
+    const after = (await (await api("/admin/settings", { cookie: admin })).json()) as {
+      defaultEngine: string;
+      engines: { id: string }[];
+    };
+    expect(after.defaultEngine).toBe("openai-low");
+    expect(after.engines.map((e) => e.id)).toEqual(["openai-low", "openai-medium"]);
+    const me = (await (await api("/me", { cookie: admin })).json()) as { defaultEngine: string };
+    expect(me.defaultEngine).toBe("openai-low");
+  });
+
+  it("applies the chosen default to everyone's generations", async () => {
+    const calls: { url: string; body: string }[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      calls.push({ url: String(input), body: typeof init?.body === "string" ? init.body : "" });
+      return new Response(JSON.stringify({ data: [{ b64_json: MOCK_ICON_PNG_B64 }] }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    const cookie = await signIn("teacher@example.com");
+    await api("/admin/grant", { ...json({ email: "teacher@example.com", amount: 5 }), cookie: admin });
+
+    const res = await api("/generations", { ...json({ slot: "icon", prompt: "houbička" }), cookie });
+    expect(res.status).toBe(201);
+    expect(calls[0].url).toBe("https://api.openai.com/v1/images/generations");
+    expect(JSON.parse(calls[0].body).quality).toBe("low");
+  });
+
+  it("can be cleared back to the configured default", async () => {
+    expect((await put(admin, null)).status).toBe(200);
+    const cookie = await signIn("teacher@example.com");
+    const res = await api("/generations", { ...json({ slot: "icon", prompt: "houbička" }), cookie });
+    expect(((await res.json()) as { source: { provider: string } }).source.provider).toBe("mock");
   });
 });
 

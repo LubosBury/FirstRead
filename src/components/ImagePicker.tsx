@@ -177,7 +177,9 @@ export function ImagePicker({
             <div>
               <Label htmlFor="engine">Model (jen pro správce)</Label>
               <Select id="engine" value={engine} onChange={(e) => setEngine(e.target.value)}>
-                <option value="">Výchozí</option>
+                <option value="">
+                  Výchozí{me.defaultEngine ? ` (${me.engines.find((e) => e.id === me.defaultEngine)?.label})` : ""}
+                </option>
                 {me.engines.map((e) => (
                   <option key={e.id} value={e.id}>
                     {e.label}

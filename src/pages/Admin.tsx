@@ -2,6 +2,7 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Navigate } from "react-router";
 import { Button } from "@/components/ui/button";
+import { EngineSettings } from "@/components/EngineSettings";
 import { Card } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { useMe } from "@/hooks/useMe";
@@ -76,27 +77,30 @@ export function Admin() {
           Přístup mají jen adresy v ALLOWED_EMAILS. Uživatel se v seznamu objeví po prvním přihlášení.
         </p>
       </section>
-      <Card>
-        <h2 className="mb-3 text-lg font-extrabold">Přidat kredity</h2>
-        <form onSubmit={grant} className="space-y-3">
-          <div>
-            <Label htmlFor="g-email">E-mail</Label>
-            <Input id="g-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="g-amount">Počet (záporný odebere)</Label>
-            <Input id="g-amount" type="number" min={-1000} max={1000} required value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
-          </div>
-          <div>
-            <Label htmlFor="g-note">Poznámka</Label>
-            <Input id="g-note" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
-          </div>
-          <Button type="submit" className="w-full" disabled={!email || !amount}>
-            Připsat
-          </Button>
-          {message && <p className="text-sm text-muted">{message}</p>}
-        </form>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <h2 className="mb-3 text-lg font-extrabold">Přidat kredity</h2>
+          <form onSubmit={grant} className="space-y-3">
+            <div>
+              <Label htmlFor="g-email">E-mail</Label>
+              <Input id="g-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="g-amount">Počet (záporný odebere)</Label>
+              <Input id="g-amount" type="number" min={-1000} max={1000} required value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
+            </div>
+            <div>
+              <Label htmlFor="g-note">Poznámka</Label>
+              <Input id="g-note" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
+            </div>
+            <Button type="submit" className="w-full" disabled={!email || !amount}>
+              Připsat
+            </Button>
+            {message && <p className="text-sm text-muted">{message}</p>}
+          </form>
+        </Card>
+        <EngineSettings />
+      </div>
     </div>
   );
 }

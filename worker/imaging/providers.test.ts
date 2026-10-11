@@ -169,8 +169,8 @@ describe("getProvider with an engine", () => {
     IMAGE_QUALITY: "medium",
   } as unknown as Env;
 
-  it("offers OpenAI at two qualities and two Gemini models", () => {
-    expect(ENGINE_IDS).toEqual(["openai-medium", "openai-low", "gemini-nano-banana-2.1", "gemini-3.1-flash-image"]);
+  it("offers OpenAI at two qualities, low first", () => {
+    expect(ENGINE_IDS).toEqual(["openai-low", "openai-medium"]);
   });
 
   it("overrides the configured provider and quality", () => {
@@ -180,12 +180,7 @@ describe("getProvider with an engine", () => {
     expect([m.id, m.quality]).toEqual(["openai", "medium"]);
   });
 
-  it("pins the Gemini model per engine", () => {
-    expect(getProvider(env, { engine: "gemini-nano-banana-2.1" }).model).toBe("gemini-nano-banana-2.1");
-    expect(getProvider(env, { engine: "gemini-3.1-flash-image" }).model).toBe("gemini-3.1-flash-image");
-  });
-
   it("still needs the provider's API key", () => {
-    expect(() => getProvider({ ...env, GEMINI_API_KEY: "" }, { engine: "gemini-nano-banana-2.1" })).toThrow(ProviderError);
+    expect(() => getProvider({ ...env, OPENAI_API_KEY: "" }, { engine: "openai-low" })).toThrow(ProviderError);
   });
 });

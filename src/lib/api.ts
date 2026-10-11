@@ -33,7 +33,11 @@ export type Me = {
   costs: { main: number; icon: number };
   /** Only for admins: engines to compare on the same prompt. */
   engines?: { id: string; label: string }[];
+  /** Only for admins: what generations use when no engine is picked. */
+  defaultEngine?: string | null;
 };
+
+export type EngineSettings = { defaultEngine: string | null; engines: { id: string; label: string }[] };
 
 export type LibraryImage = {
   id: string;
@@ -80,6 +84,8 @@ export const api = {
     ),
 
   adminUsers: () => request<AdminUser[]>("/admin/users"),
+  adminSettings: () => request<EngineSettings>("/admin/settings"),
+  saveAdminSettings: (defaultEngine: string | null) => request<EngineSettings>("/admin/settings", send("PUT", { defaultEngine })),
   adminGrant: (email: string, amount: number, note: string) =>
     request<{ balance: number }>("/admin/grant", send("POST", { email, amount, note })),
 };

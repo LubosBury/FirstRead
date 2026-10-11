@@ -3,6 +3,8 @@ import { z } from "zod";
 import { badRequest, notFound, type AppEnv } from "../app";
 import { grantCredits, InsufficientCreditsError } from "../credits";
 import { isAdminEmail } from "../env";
+import { ENGINE_IDS, ENGINES, engineFromEnv } from "../imaging/engines";
+import { getDefaultEngine, setDefaultEngine } from "../settings";
 
 export const admin = new Hono<AppEnv>();
 
@@ -43,4 +45,23 @@ admin.post("/admin/grant", async (c) => {
     if (e instanceof InsufficientCreditsError) return badRequest(c, "Zůstatek nemůže klesnout pod nulu.");
     throw e;
   }
+});
+
+const settingsBody = z.object({ defaultEngine: z.enum(ENGINE_IDS).nullable() });
+
+async function settings(c: { env: Env }) {
+  return {
+    // What generations use right now: the saved choice, else the Worker vars.
+    defaultEngine: (await getDefaultEngine(c.env.DB)) ?? engineFromEnv(c.env),
+    engines: ENGINES.map(({ id, label }) => ({ id, label })),
+  };
+}
+
+admin.get("/admin/settings", async (c) => c.json(await settings(c)));
+
+admin.put("/admin/settings", async (c) => {
+  const parsed = settingsBody.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return badRequest(c, "Neznámý model.");
+  await setDefaultEngine(c.env.DB, parsed.data.defaultEngine, c.get("user").email);
+  return c.json(await settings(c));
 });

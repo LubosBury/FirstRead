@@ -54,8 +54,8 @@ export function getProvider(env: Env, opts: ProviderOptions = {}): ImageProvider
   const fetchImpl = opts.fetch ?? ((input, init) => fetch(input, init));
   const engine = opts.engine ? getEngine(opts.engine) : undefined;
   const providerId = engine?.provider ?? env.IMAGE_PROVIDER;
-  const quality = (engine && "quality" in engine ? engine.quality : env.IMAGE_QUALITY) || "medium";
-  const geminiModel = engine && "model" in engine ? engine.model : env.GEMINI_IMAGE_MODEL;
+  const quality = (engine?.quality ?? env.IMAGE_QUALITY) || "medium";
+  const geminiModel = engine?.model ?? env.GEMINI_IMAGE_MODEL;
 
   switch (providerId) {
     case "mock":

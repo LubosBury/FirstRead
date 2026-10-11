@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import type { AppEnv } from "../app";
 import { ensureWallet, getBalance } from "../credits";
 import { intVar, isAdminEmail } from "../env";
-import { ENGINES } from "../imaging/engines";
+import { ENGINES, engineFromEnv } from "../imaging/engines";
+import { getDefaultEngine } from "../settings";
 
 export const me = new Hono<AppEnv>();
 
@@ -17,7 +18,10 @@ me.get("/me", async (c) => {
     isAdmin,
     costs: { main: intVar(c.env.CREDIT_COST_MAIN, 1), icon: intVar(c.env.CREDIT_COST_ICON, 1) },
     // Admins can compare engines on the same prompt; everyone else gets the default.
-    ...(isAdmin && { engines: ENGINES.map(({ id, label }) => ({ id, label })) }),
+    ...(isAdmin && {
+      engines: ENGINES.map(({ id, label }) => ({ id, label })),
+      defaultEngine: (await getDefaultEngine(c.env.DB)) ?? engineFromEnv(c.env),
+    }),
   });
 });
 
