@@ -1,6 +1,6 @@
 import { placeItems, type Rect } from "@/lib/placement";
 import { mulberry32, shuffle } from "@/lib/prng";
-import { A4, type AssetSizes, type BadgeEl, type ImageEl, type Layout, type TextEl } from "@/templates/types";
+import { A4, badgeOuterR, type AssetSizes, type BadgeEl, type ImageEl, type Layout, type TextEl } from "@/templates/types";
 import type { ReadingChallengeParams } from "./params";
 
 const MARGIN = 12;
@@ -13,6 +13,11 @@ const ICON_MAX = 34;
 const ICON_GAP = 3;
 /** Day-number circle radius, as a share of the picture size. */
 const BADGE_RATIO = 0.16;
+/** Day-number outline widths, in mm. */
+const BADGE_STROKE = { thin: 0.4, thick: 0.8 };
+/** A dash plus its gap is about this many outline widths long; the dash takes this share of it. */
+const DASH_REPEAT = 4;
+const DASH_SHARE = 0.6;
 
 function mainRect(p: ReadingChallengeParams, assets: AssetSizes): Rect {
   const boxW = MAIN_BOX.w * p.mainImage.scale;
@@ -79,9 +84,10 @@ export function layoutReadingChallenge(p: ReadingChallengeParams, assets: AssetS
 
 /**
  * Numbers the pictures 1..count in random order, so kids hunt for today's day.
- * Each number sits at the picture's bottom-right, overlapping its edge, but
- * stays within half the gap of the picture's circle so it never touches a
- * neighbour or the main image. Drawn after every picture, so it stays on top.
+ * A number sits in the middle of its picture, or at its bottom-right overlapping
+ * the edge. In the corner the whole circle, outline included, stays within half
+ * the gap of the picture's circle, so it never touches a neighbour or the main
+ * image. Drawn after every picture, so it stays on top.
  */
 function dayBadges(icons: ImageEl[], size: number, p: ReadingChallengeParams): BadgeEl[] {
   // A separate stream, so the numbers never move the pictures.
@@ -89,15 +95,25 @@ function dayBadges(icons: ImageEl[], size: number, p: ReadingChallengeParams): B
     icons.map((_, i) => i + 1),
     mulberry32(p.seed ^ 0x2545f491),
   );
+  const style = p.numberStyle;
   const r = size * BADGE_RATIO;
-  const offset = (size / 2 + ICON_GAP / 2 - r) / Math.SQRT2;
+  const stroke = style.border === "none" ? null : badgeStroke(r, BADGE_STROKE[style.weight], style.border === "dashed");
+  const offset = style.position === "center" ? 0 : (size / 2 + ICON_GAP / 2 - badgeOuterR({ r, stroke })) / Math.SQRT2;
   return icons.map((icon, i) => ({
     kind: "badge",
     x: icon.x + icon.w / 2 + offset,
     y: icon.y + icon.h / 2 + offset,
     r,
+    stroke,
     text: String(days[i]),
     font: p.font,
     fontSize: r * 1.2,
   }));
+}
+
+/** Dashes fit the circle a whole number of times, so no odd dash or gap marks the seam. */
+function badgeStroke(r: number, width: number, dashed: boolean): BadgeEl["stroke"] {
+  if (!dashed) return { width, dash: null };
+  const repeat = (2 * Math.PI * r) / Math.max(1, Math.round((2 * Math.PI * r) / (width * DASH_REPEAT)));
+  return { width, dash: [repeat * DASH_SHARE, repeat * (1 - DASH_SHARE)] };
 }

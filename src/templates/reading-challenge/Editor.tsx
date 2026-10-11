@@ -8,7 +8,13 @@ import { czechMonthName, daysInMonth } from "@/lib/months";
 import { randomSeed } from "@/lib/prng";
 import { cn } from "@/lib/utils";
 import type { EditorProps } from "@/templates/types";
-import { defaultTitle, MAX_ICON_VARIANTS, type MainPosition, type ReadingChallengeParams } from "./params";
+import {
+  defaultTitle,
+  MAX_ICON_VARIANTS,
+  type MainPosition,
+  type NumberStyle,
+  type ReadingChallengeParams,
+} from "./params";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -28,14 +34,72 @@ function Check({ checked, onChange, children }: { checked: boolean; onChange: (v
   );
 }
 
-const POSITIONS: { id: MainPosition; label: string }[] = [
+type Option<T extends string> = { id: T; label: string };
+
+function Segmented<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: Option<T>[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div>
+      <Label>{label}</Label>
+      <div
+        role="group"
+        aria-label={label}
+        className="grid gap-1 rounded-xl bg-canvas p-1"
+        style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+      >
+        {options.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            aria-pressed={value === o.id}
+            onClick={() => onChange(o.id)}
+            className={cn(
+              "rounded-lg py-1.5 text-sm font-semibold",
+              value === o.id ? "bg-surface shadow-sm" : "text-muted hover:text-ink",
+            )}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const POSITIONS: Option<MainPosition>[] = [
   { id: "left", label: "Vlevo" },
   { id: "center", label: "Uprostřed" },
   { id: "right", label: "Vpravo" },
 ];
 
+const NUMBER_POSITIONS: Option<NumberStyle["position"]>[] = [
+  { id: "corner", label: "V rohu" },
+  { id: "center", label: "Uprostřed" },
+];
+
+const NUMBER_BORDERS: Option<NumberStyle["border"]>[] = [
+  { id: "none", label: "Žádné" },
+  { id: "solid", label: "Plné" },
+  { id: "dashed", label: "Čárkované" },
+];
+
+const NUMBER_WEIGHTS: Option<NumberStyle["weight"]>[] = [
+  { id: "thin", label: "Tenká" },
+  { id: "thick", label: "Silná" },
+];
+
 export function ReadingChallengeEditor({ params: p, onChange }: EditorProps<ReadingChallengeParams>) {
   const set = (patch: Partial<ReadingChallengeParams>) => onChange({ ...p, ...patch });
+  const setNumberStyle = (patch: Partial<NumberStyle>) => set({ numberStyle: { ...p.numberStyle, ...patch } });
 
   /** Follows the month with the title and count, unless the teacher changed them. */
   function setMonth(year: number, month: number) {
@@ -116,25 +180,12 @@ export function ReadingChallengeEditor({ params: p, onChange }: EditorProps<Read
           value={p.mainImage.imageId ? [p.mainImage.imageId] : []}
           onChange={(ids) => set({ mainImage: { ...p.mainImage, imageId: ids[0] ?? null } })}
         />
-        <div>
-          <Label>Umístění dole</Label>
-          <div className="grid grid-cols-3 gap-1 rounded-xl bg-canvas p-1">
-            {POSITIONS.map((pos) => (
-              <button
-                key={pos.id}
-                type="button"
-                aria-pressed={p.mainImage.position === pos.id}
-                onClick={() => set({ mainImage: { ...p.mainImage, position: pos.id } })}
-                className={cn(
-                  "rounded-lg py-1.5 text-sm font-semibold",
-                  p.mainImage.position === pos.id ? "bg-surface shadow-sm" : "text-muted hover:text-ink",
-                )}
-              >
-                {pos.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <Segmented
+          label="Umístění dole"
+          options={POSITIONS}
+          value={p.mainImage.position}
+          onChange={(position) => set({ mainImage: { ...p.mainImage, position } })}
+        />
         <div>
           <Label htmlFor="scale">Velikost</Label>
           <input
@@ -165,12 +216,39 @@ export function ReadingChallengeEditor({ params: p, onChange }: EditorProps<Read
         <Check checked={p.jitter} onChange={(jitter) => set({ jitter })}>
           Natočit a zrcadlit obrázky náhodně
         </Check>
+      </Section>
+
+      <Section title="Čísla dnů">
         <div>
           <Check checked={p.dayNumbers} onChange={(dayNumbers) => set({ dayNumbers })}>
             Očíslovat dny
           </Check>
           <p className="mt-1 text-xs text-muted">Čísla 1-{p.count} v náhodném pořadí. Zamíchání je přeskládá.</p>
         </div>
+        {p.dayNumbers && (
+          <>
+            <Segmented
+              label="Umístění čísla"
+              options={NUMBER_POSITIONS}
+              value={p.numberStyle.position}
+              onChange={(position) => setNumberStyle({ position })}
+            />
+            <Segmented
+              label="Ohraničení"
+              options={NUMBER_BORDERS}
+              value={p.numberStyle.border}
+              onChange={(border) => setNumberStyle({ border })}
+            />
+            {p.numberStyle.border !== "none" && (
+              <Segmented
+                label="Čára"
+                options={NUMBER_WEIGHTS}
+                value={p.numberStyle.weight}
+                onChange={(weight) => setNumberStyle({ weight })}
+              />
+            )}
+          </>
+        )}
       </Section>
 
       <Section title="Tisk">

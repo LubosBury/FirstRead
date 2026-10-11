@@ -22,12 +22,18 @@ export const readingChallengeSchema = z.object({
   jitter: z.boolean(),
   /** Number the pictures 1..count, one per day, in random order. */
   dayNumbers: z.boolean(),
+  numberStyle: z.object({
+    position: z.enum(["corner", "center"]),
+    border: z.enum(["none", "solid", "dashed"]),
+    weight: z.enum(["thin", "thick"]),
+  }),
   /** Clean images to pure black outlines on transparent paper. */
   lineArt: z.boolean(),
 });
 
 export type ReadingChallengeParams = z.infer<typeof readingChallengeSchema>;
 export type MainPosition = ReadingChallengeParams["mainImage"]["position"];
+export type NumberStyle = ReadingChallengeParams["numberStyle"];
 
 export const defaultTitle = (month: number) => `Čtenářská výzva na ${czechMonthName(month)}`;
 
@@ -48,6 +54,7 @@ export function defaultReadingChallengeParams(now: Date = new Date()): ReadingCh
     seed: randomSeed(),
     jitter: true,
     dayNumbers: false,
+    numberStyle: { position: "corner", border: "solid", weight: "thin" },
     lineArt: true,
   };
 }

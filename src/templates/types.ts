@@ -30,17 +30,22 @@ export type ImageEl = {
   mirror: boolean;
 };
 
-/** A short label in a white circle, e.g. the day number next to a picture. Always drawn upright. */
+/** A short label in a white circle, e.g. the day number on a picture. Always drawn upright. */
 export type BadgeEl = {
   kind: "badge";
   /** Center of the circle. */
   x: number;
   y: number;
   r: number;
+  /** Circle outline; null draws only the white fill. `dash` is [dash, gap], starting at 3 o'clock. */
+  stroke: { width: number; dash: [number, number] | null } | null;
   text: string;
   font: FontId;
   fontSize: number;
 };
+
+/** How far the badge reaches, outline included. The white fill goes this far, so dash gaps stay white. */
+export const badgeOuterR = (b: Pick<BadgeEl, "r" | "stroke">) => b.r + (b.stroke ? b.stroke.width / 2 : 0);
 
 export type LayoutElement = TextEl | ImageEl | BadgeEl;
 export type Layout = { page: typeof A4; elements: LayoutElement[] };

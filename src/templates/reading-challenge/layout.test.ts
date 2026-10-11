@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { A4, type BadgeEl, type ImageEl, type TextEl } from "@/templates/types";
+import { A4, badgeOuterR, type BadgeEl, type ImageEl, type TextEl } from "@/templates/types";
 import { defaultReadingChallengeParams, type ReadingChallengeParams } from "./params";
 import { layoutReadingChallenge } from "./layout";
 
@@ -28,6 +28,10 @@ describe("reading challenge defaults", () => {
 
   it("leaves day numbers off, so older sheets print as before", () => {
     expect(october().dayNumbers).toBe(false);
+  });
+
+  it("styles numbers as a thin solid circle in the corner, as before styles existed", () => {
+    expect(october().numberStyle).toEqual({ position: "corner", border: "solid", weight: "thin" });
   });
 });
 
@@ -68,22 +72,66 @@ describe("day numbers", () => {
     expect(icons(numbered({ seed: 9 }))).toEqual(icons(layoutReadingChallenge(october({ seed: 9 }), {}).elements));
   });
 
-  it("sits on its own picture without touching the others, the main image or the page edge", () => {
-    const els = numbered();
+  it.each([
+    ["thin", "solid"],
+    ["thick", "dashed"],
+  ] as const)("sits on its own picture without touching the others, the main image or the page edge (%s %s)", (weight, border) => {
+    const els = numbered({ numberStyle: { position: "corner", border, weight } });
     const pics = icons(els);
     const m = main(els);
     badges(els).forEach((b, i) => {
       pics.forEach((pic, j) => {
         const d = Math.hypot(b.x - (pic.x + pic.w / 2), b.y - (pic.y + pic.h / 2));
         if (i === j) expect(d).toBeLessThan(pic.w / 2);
-        else expect(d).toBeGreaterThanOrEqual(pic.w / 2 + b.r);
+        else expect(d).toBeGreaterThanOrEqual(pic.w / 2 + badgeOuterR(b));
       });
       const nx = Math.max(m.x, Math.min(b.x, m.x + m.w));
       const ny = Math.max(m.y, Math.min(b.y, m.y + m.h));
-      expect(Math.hypot(b.x - nx, b.y - ny)).toBeGreaterThanOrEqual(b.r);
-      expect(b.x + b.r).toBeLessThanOrEqual(A4.w);
-      expect(b.y + b.r).toBeLessThanOrEqual(A4.h);
+      expect(Math.hypot(b.x - nx, b.y - ny)).toBeGreaterThanOrEqual(badgeOuterR(b));
+      expect(b.x + badgeOuterR(b)).toBeLessThanOrEqual(A4.w);
+      expect(b.y + badgeOuterR(b)).toBeLessThanOrEqual(A4.h);
     });
+  });
+
+  it("can sit in the middle of its picture", () => {
+    const els = numbered({ numberStyle: { position: "center", border: "solid", weight: "thin" } });
+    const pics = icons(els);
+    badges(els).forEach((b, i) => {
+      expect(b.x).toBeCloseTo(pics[i].x + pics[i].w / 2, 9);
+      expect(b.y).toBeCloseTo(pics[i].y + pics[i].h / 2, 9);
+    });
+  });
+
+  it("draws no outline when the border is off", () => {
+    for (const b of badges(numbered({ numberStyle: { position: "corner", border: "none", weight: "thick" } })))
+      expect(b.stroke).toBeNull();
+  });
+
+  it("draws a thicker outline when asked", () => {
+    const width = (weight: "thin" | "thick") =>
+      badges(numbered({ numberStyle: { position: "corner", border: "solid", weight } }))[0].stroke!.width;
+    expect(width("thick")).toBeGreaterThan(width("thin"));
+  });
+
+  it("keeps a solid outline unbroken", () => {
+    for (const b of badges(numbered())) expect(b.stroke).toEqual({ width: expect.any(Number), dash: null });
+  });
+
+  it("dashes the outline evenly all the way round", () => {
+    for (const b of badges(numbered({ numberStyle: { position: "corner", border: "dashed", weight: "thin" } }))) {
+      const [dash, gap] = b.stroke!.dash!;
+      expect(dash).toBeGreaterThan(gap);
+      const repeats = (2 * Math.PI * b.r) / (dash + gap);
+      expect(repeats).toBeCloseTo(Math.round(repeats), 9);
+    }
+  });
+
+  it("keeps the number size the same in every style", () => {
+    const sizes = (numberStyle: ReadingChallengeParams["numberStyle"]) =>
+      badges(numbered({ seed: 7, numberStyle })).map((b) => [b.r, b.fontSize]);
+    expect(sizes({ position: "center", border: "dashed", weight: "thick" })).toEqual(
+      sizes({ position: "corner", border: "solid", weight: "thin" }),
+    );
   });
 
   it("uses the title font", () => {
