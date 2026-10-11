@@ -1,5 +1,12 @@
+import { env } from "cloudflare:test";
 import { exports } from "cloudflare:workers";
 import { vi } from "vitest";
+import { getAuth } from "../auth";
+
+/** Creates a user the way an admin's invite does. Server-side, so no permission check. */
+export async function invite(email: string, role: "user" | "admin" = "user"): Promise<void> {
+  await getAuth(env).api.createUser({ body: { email, name: "", role } });
+}
 
 export const ORIGIN = "http://localhost";
 

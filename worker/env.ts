@@ -11,9 +11,6 @@ export function emailSet(list: string | undefined): Set<string> {
 export const isAllowedEmail = (env: Env, email: string) =>
   emailSet(env.ALLOWED_EMAILS).has(email.trim().toLowerCase());
 
-export const isAdminEmail = (env: Env, email: string) =>
-  emailSet(env.ADMIN_EMAILS).has(email.trim().toLowerCase());
-
 export function intVar(value: string | undefined, fallback: number): number {
   const n = Number.parseInt(value ?? "", 10);
   return Number.isFinite(n) && n >= 0 ? n : fallback;

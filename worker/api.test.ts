@@ -3,7 +3,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { MOCK_ICON_PNG_B64 } from "./imaging/fixtures";
 import { fromBase64 } from "./imaging/base64";
 import worker from "./index";
-import { api, json, signIn } from "./test/session";
+import { api, invite, json, signIn } from "./test/session";
 
 const PNG = fromBase64(MOCK_ICON_PNG_B64);
 const upload = (cookie: string, body: Uint8Array | string, type = "image/png") =>
@@ -14,6 +14,9 @@ let other: string;
 let admin: string;
 
 beforeAll(async () => {
+  await invite("teacher@example.com");
+  await invite("other@example.com");
+  await invite("admin@example.com", "admin");
   teacher = await signIn("teacher@example.com");
   other = await signIn("other@example.com");
   admin = await signIn("admin@example.com");
@@ -321,6 +324,10 @@ describe("admin", () => {
   it("is closed to non-admins", async () => {
     expect((await api("/admin/users", { cookie: teacher })).status).toBe(403);
     expect((await api("/admin/grant", { ...json({ email: "teacher@example.com", amount: 5 }), cookie: teacher })).status).toBe(403);
+  });
+
+  it("keeps the plugin's own admin endpoints closed to regular users", async () => {
+    expect((await api("/auth/admin/list-users", { cookie: teacher })).status).toBe(403);
   });
 
   it("lists users and grants credits by email", async () => {

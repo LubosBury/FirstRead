@@ -1,15 +1,14 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { badRequest, notFound, type AppEnv } from "../app";
+import { badRequest, isAdmin, notFound, type AppEnv } from "../app";
 import { grantCredits, InsufficientCreditsError } from "../credits";
-import { isAdminEmail } from "../env";
 import { ENGINE_IDS, engineOptions } from "../imaging/engines";
 import { resolveEngine, setDefaultEngine } from "../settings";
 
 export const admin = new Hono<AppEnv>();
 
 admin.use("/admin/*", async (c, next) => {
-  if (!isAdminEmail(c.env, c.get("user").email)) return c.json({ error: "forbidden", message: "Jen pro správce." }, 403);
+  if (!isAdmin(c.get("user"))) return c.json({ error: "forbidden", message: "Jen pro správce." }, 403);
   await next();
 });
 

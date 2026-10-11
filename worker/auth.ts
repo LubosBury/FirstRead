@@ -1,4 +1,5 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { admin } from "better-auth/plugins/admin";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { isAllowedEmail } from "./env";
 import { magicLinkMail, sendMail } from "./mail";
@@ -15,6 +16,7 @@ export function authOptions(env: Env) {
       updateAge: 60 * 60 * 24,
     },
     plugins: [
+      admin(),
       magicLink({
         expiresIn: 60 * 15,
         storeToken: "hashed",
