@@ -1,0 +1,116 @@
+import { ChevronLeft, ChevronRight, ExternalLink, Loader2, Printer } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
+import type { LibraryImage } from "@/lib/api";
+import { loadAsset } from "@/lib/assets";
+import { describeSource } from "@/lib/imageSource";
+import { printImage } from "@/lib/printImage";
+
+/** Large preview of library images, stepping through them and printing one per A4 page. */
+export function ImageViewer({
+  images,
+  index,
+  onIndexChange,
+  onClose,
+}: {
+  images: LibraryImage[];
+  index: number | null;
+  onIndexChange: (index: number) => void;
+  onClose: () => void;
+}) {
+  const img = index === null ? undefined : images[index];
+  // "As on the sheet" shows the cleaned black outlines the PDF uses; off shows
+  // exactly what the model returned.
+  const [asOnSheet, setAsOnSheet] = useState(true);
+  const [cleaned, setCleaned] = useState<{ id: string; url: string } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!img || !asOnSheet) return;
+    let alive = true;
+    loadAsset(img.id, true).then(
+      (a) => alive && setCleaned({ id: img.id, url: a.url }),
+      () => alive && setNotice("Obrázek se nepodařilo načíst."),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [img, asOnSheet]);
+
+  const count = images.length;
+  const step = (delta: number) => index !== null && count > 0 && onIndexChange((index + delta + count) % count);
+
+  useEffect(() => {
+    if (index === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") step(-1);
+      if (e.key === "ArrowRight") step(1);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
+
+  if (!img) return null;
+  const src = asOnSheet ? (cleaned?.id === img.id ? cleaned.url : null) : img.url;
+  const source = describeSource(img.source);
+  const title = img.label ?? "obrázek";
+
+  function print() {
+    if (!src) return;
+    setNotice(printImage(src, title) ? null : "Prohlížeč zablokoval nové okno. Povolte prosím vyskakovací okna pro tento web.");
+  }
+
+  return (
+    <Dialog open onClose={onClose} title={`Obrázek ${index! + 1} z ${count}`} className="max-w-4xl">
+      <div className="space-y-3">
+        <div
+          className="flex h-[62vh] items-center justify-center overflow-hidden rounded-xl border border-line bg-white"
+          style={{ backgroundImage: "repeating-conic-gradient(#f3f1ea 0% 25%, #fff 0% 50%)", backgroundSize: "20px 20px" }}
+        >
+          {src ? (
+            <img src={src} alt={title} data-testid="viewer-image" className="h-full w-full object-contain" />
+          ) : (
+            <Loader2 className="h-8 w-8 animate-spin text-brand" />
+          )}
+        </div>
+
+        <div className="text-sm">
+          <p className="font-semibold">{img.label ?? (img.origin === "upload" ? "Nahraný obrázek" : "Vygenerovaný obrázek")}</p>
+          {source && (
+            <p className="text-muted" data-testid="viewer-source">
+              {source}
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" size="icon" aria-label="Předchozí" onClick={() => step(-1)} disabled={count < 2}>
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <Button variant="secondary" size="icon" aria-label="Další" onClick={() => step(1)} disabled={count < 2}>
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+          <label className="ml-1 flex cursor-pointer items-center gap-2 text-sm">
+            <input type="checkbox" className="h-4 w-4 accent-brand" checked={asOnSheet} onChange={(e) => setAsOnSheet(e.target.checked)} />
+            Jak na listu (černé obrysy)
+          </label>
+          <div className="ml-auto flex gap-2">
+            <a
+              href={img.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-line px-4 text-sm font-semibold hover:bg-canvas"
+            >
+              <ExternalLink className="h-4 w-4" /> Originál
+            </a>
+            <Button onClick={print} disabled={!src}>
+              <Printer className="h-4 w-4" /> Vytisknout na A4
+            </Button>
+          </div>
+        </div>
+        {notice && <p className="text-sm text-danger">{notice}</p>}
+      </div>
+    </Dialog>
+  );
+}

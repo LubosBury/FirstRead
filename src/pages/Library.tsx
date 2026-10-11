@@ -1,6 +1,7 @@
 import { ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Thumb } from "@/components/ImagePicker";
+import { ImageViewer } from "@/components/ImageViewer";
 import { Button } from "@/components/ui/button";
 import { api, ApiError, type LibraryImage } from "@/lib/api";
 import { describeSource } from "@/lib/imageSource";
@@ -11,6 +12,7 @@ export function Library() {
   const [images, setImages] = useState<LibraryImage[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -53,7 +55,8 @@ export function Library() {
         </Button>
       </div>
       <p className="text-sm text-muted">
-        Každý vygenerovaný obrázek tu zůstává, takže ho můžete použít znovu bez dalších kreditů.
+        Každý vygenerovaný obrázek tu zůstává, takže ho můžete použít znovu bez dalších kreditů. Kliknutím ho otevřete
+        ve velkém a můžete ho vytisknout.
       </p>
       {error && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
       {images === null ? (
@@ -62,9 +65,11 @@ export function Library() {
         <p className="text-muted">Zatím žádné obrázky.</p>
       ) : (
         <ul className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
-          {images.map((img) => (
+          {images.map((img, i) => (
             <li key={img.id}>
-              <Thumb src={img.url} className="aspect-square w-full" />
+              <button type="button" className="block w-full" onClick={() => setViewing(i)} aria-label="Zobrazit ve velkém">
+                <Thumb src={img.url} className="aspect-square w-full hover:border-brand" />
+              </button>
               <div className="mt-1 flex items-start gap-1 text-xs">
                 <span className="min-w-0 flex-1 text-muted">
                   <span className="block truncate" title={img.label ?? undefined}>
@@ -83,6 +88,9 @@ export function Library() {
             </li>
           ))}
         </ul>
+      )}
+      {images && (
+        <ImageViewer images={images} index={viewing} onIndexChange={setViewing} onClose={() => setViewing(null)} />
       )}
     </div>
   );
