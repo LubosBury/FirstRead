@@ -370,6 +370,71 @@ describe("admin", () => {
   });
 });
 
+describe("access", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  type Row = { id: string; email: string; banned: boolean; emailVerified: boolean };
+  const row = async (email: string) =>
+    ((await (await api("/admin/users", { cookie: admin })).json()) as Row[]).find((u) => u.email === email)!;
+  const inviteVia = (email: string, cookie = admin) => api("/admin/invites", { ...json({ email }), cookie });
+  const post = (path: string, cookie: string) => api(path, { method: "POST", cookie });
+
+  it("invites by email; the user is pending until the first sign-in", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const res = await inviteVia(" New.Teacher@Example.com ");
+    const mail = log.mock.calls.map((c) => String(c[0])).find((s) => s.includes("to=new.teacher@example.com"));
+    log.mockRestore();
+
+    expect(res.status).toBe(201);
+    expect(mail).toContain("Pozvánka do FirstRead");
+    expect(mail).toContain("http://localhost/?email=new.teacher%40example.com");
+    expect(await row("new.teacher@example.com")).toMatchObject({ emailVerified: false, banned: false });
+
+    await signIn("new.teacher@example.com");
+    expect((await row("new.teacher@example.com")).emailVerified).toBe(true);
+  });
+
+  it("resends to a pending user and refuses one who already has access", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    expect((await inviteVia("pending@example.com")).status).toBe(201);
+    const again = await inviteVia("pending@example.com");
+    expect(again.status).toBe(200);
+    expect(((await again.json()) as { resent: boolean }).resent).toBe(true);
+    expect((await inviteVia("teacher@example.com")).status).toBe(409);
+  });
+
+  it("rejects an invalid email", async () => {
+    expect((await inviteVia("not-an-email")).status).toBe(400);
+  });
+
+  it("revokes access: sessions end and no new link; restoring lets the user back in", async () => {
+    await invite("leaver@example.com");
+    const cookie = await signIn("leaver@example.com");
+    const { id } = await row("leaver@example.com");
+
+    expect((await post(`/admin/users/${id}/ban`, admin)).status).toBe(204);
+    expect((await api("/me", { cookie })).status).toBe(401);
+    expect((await api("/auth/sign-in/magic-link", json({ email: "leaver@example.com", callbackURL: "/" }))).status).toBe(403);
+    expect((await row("leaver@example.com")).banned).toBe(true);
+    expect((await inviteVia("leaver@example.com")).status).toBe(409);
+
+    expect((await post(`/admin/users/${id}/unban`, admin)).status).toBe(204);
+    expect((await api("/me", { cookie: await signIn("leaver@example.com") })).status).toBe(200);
+  });
+
+  it("does not let an admin revoke their own access", async () => {
+    const { id } = await row("admin@example.com");
+    expect((await post(`/admin/users/${id}/ban`, admin)).status).toBe(400);
+  });
+
+  it("is closed to non-admins", async () => {
+    const { id } = await row("other@example.com");
+    expect((await inviteVia("someone@example.com", teacher)).status).toBe(403);
+    expect((await post(`/admin/users/${id}/ban`, teacher)).status).toBe(403);
+    expect((await post(`/admin/users/${id}/unban`, teacher)).status).toBe(403);
+  });
+});
+
 describe("scheduled", () => {
   it("refunds generations stuck in pending", async () => {
     const userId = (await env.DB.prepare(`SELECT id FROM "user" WHERE email = 'teacher@example.com'`).first<string>("id"))!;

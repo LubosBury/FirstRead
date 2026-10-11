@@ -1,8 +1,11 @@
 import { Hono } from "hono";
+import { APIError } from "better-auth/api";
 import { z } from "zod";
 import { badRequest, isAdmin, notFound, type AppEnv } from "../app";
+import { getAuth } from "../auth";
 import { grantCredits, InsufficientCreditsError } from "../credits";
 import { ENGINE_IDS, engineOptions } from "../imaging/engines";
+import { inviteMail, sendMail } from "../mail";
 import { resolveEngine, setDefaultEngine } from "../settings";
 
 export const admin = new Hono<AppEnv>();
@@ -12,13 +15,24 @@ admin.use("/admin/*", async (c, next) => {
   await next();
 });
 
+type UserRow = {
+  id: string;
+  email: string;
+  createdAt: string;
+  role: string | null;
+  banned: number | null;
+  emailVerified: number;
+  balance: number;
+  generated: number;
+};
+
 admin.get("/admin/users", async (c) => {
   const { results } = await c.env.DB.prepare(
-    `SELECT u.id, u.email, u.createdAt AS createdAt, COALESCE(w.balance, 0) AS balance,
+    `SELECT u.id, u.email, u.createdAt AS createdAt, u.role, u.banned, u.emailVerified, COALESCE(w.balance, 0) AS balance,
             (SELECT COUNT(*) FROM generations g WHERE g.user_id = u.id AND g.status = 'done') AS generated
      FROM "user" u LEFT JOIN wallets w ON w.user_id = u.id ORDER BY u.createdAt DESC`,
-  ).all();
-  return c.json(results);
+  ).all<UserRow>();
+  return c.json(results.map((u) => ({ ...u, banned: Boolean(u.banned), emailVerified: Boolean(u.emailVerified) })));
 });
 
 const grant = z.object({
@@ -44,6 +58,48 @@ admin.post("/admin/grant", async (c) => {
     if (e instanceof InsufficientCreditsError) return badRequest(c, "Zůstatek nemůže klesnout pod nulu.");
     throw e;
   }
+});
+
+const inviteBody = z.object({ email: z.string().trim().toLowerCase().email() });
+
+admin.post("/admin/invites", async (c) => {
+  const parsed = inviteBody.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return badRequest(c, "Zadejte platný e-mail.");
+  const { email } = parsed.data;
+  const existing = await c.env.DB.prepare(`SELECT emailVerified, banned FROM "user" WHERE lower(email) = ?`)
+    .bind(email)
+    .first<{ emailVerified: number; banned: number | null }>();
+  if (existing?.banned) return c.json({ error: "conflict", message: "Přístup byl odebrán. Vraťte ho v seznamu uživatelů." }, 409);
+  if (existing?.emailVerified) return c.json({ error: "conflict", message: "Tento e-mail už přístup má." }, 409);
+  if (!existing) {
+    // With the admin's headers, the plugin checks the role as well.
+    await getAuth(c.env).api.createUser({ headers: c.req.raw.headers, body: { email, name: "", role: "user" } });
+  }
+  await sendMail(c.env, inviteMail(email, c.get("user").email, c.env.APP_URL));
+  return c.json({ email, resent: Boolean(existing) }, existing ? 200 : 201);
+});
+
+// Revoking access is a Better Auth ban: it ends all sessions, and the magic-link
+// gate refuses banned users. Their sheets and images stay.
+admin.post("/admin/users/:id/ban", async (c) => {
+  try {
+    await getAuth(c.env).api.banUser({ headers: c.req.raw.headers, body: { userId: c.req.param("id") } });
+  } catch (e) {
+    if (e instanceof APIError && e.statusCode === 400) return badRequest(c, "Sami sobě přístup odebrat nemůžete.");
+    if (e instanceof APIError && e.statusCode === 404) return notFound(c);
+    throw e;
+  }
+  return c.body(null, 204);
+});
+
+admin.post("/admin/users/:id/unban", async (c) => {
+  try {
+    await getAuth(c.env).api.unbanUser({ headers: c.req.raw.headers, body: { userId: c.req.param("id") } });
+  } catch (e) {
+    if (e instanceof APIError && e.statusCode === 404) return notFound(c);
+    throw e;
+  }
+  return c.body(null, 204);
 });
 
 const settingsBody = z.object({ defaultEngine: z.enum(ENGINE_IDS).nullable() });
