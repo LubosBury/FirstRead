@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { MeProvider, useMe } from "@/hooks/useMe";
 import { Admin } from "@/pages/Admin";
 import { Home } from "@/pages/Home";
+import { InviteAccept } from "@/pages/InviteAccept";
 import { Library } from "@/pages/Library";
 import { Login } from "@/pages/Login";
 import { SheetEditor } from "@/pages/SheetEditor";
@@ -14,6 +15,7 @@ function Gate() {
   if (!me) {
     return (
       <Routes>
+        <Route path="/invite" element={<InviteAccept />} />
         <Route path="*" element={<Login />} />
       </Routes>
     );
