@@ -8,6 +8,10 @@ export type ImageRow = {
   bytes: number;
   label: string | null;
   created_at: string;
+  /** Set while the picture is in the shared library. */
+  shared_at: string | null;
+  /** Set on the first share and never cleared: other users' sheets may use it. */
+  first_shared_at: string | null;
   /** Joined from generations when listing; absent on a freshly saved row. */
   g_provider?: string | null;
   g_model?: string | null;
@@ -37,6 +41,8 @@ export const publicImage = (r: ImageRow) => ({
   mime: r.mime,
   label: r.label,
   createdAt: r.created_at,
+  shared: !!r.shared_at,
+  everShared: !!r.first_shared_at,
   url: `/api/images/${r.id}`,
   source: r.g_provider ? { provider: r.g_provider, model: r.g_model ?? null, quality: r.g_quality ?? null } : null,
 });
@@ -56,6 +62,8 @@ export async function saveImage(
     bytes: img.bytes.byteLength,
     label: img.label,
     created_at: new Date().toISOString(),
+    shared_at: null,
+    first_shared_at: null,
   };
   await env.IMAGES.put(row.r2_key, img.bytes, { httpMetadata: { contentType: img.mime } });
   await env.DB.prepare(
@@ -67,9 +75,17 @@ export async function saveImage(
   return row;
 }
 
-/** Only ever looks up images by owner, so no route can leak another user's. */
+/** For changes (delete, share): only ever looks up images by owner. */
 export function getOwnedImage(db: D1Database, userId: string, id: string) {
   return db.prepare("SELECT * FROM images WHERE id = ? AND user_id = ?").bind(id, userId).first<ImageRow>();
+}
+
+/** For reads: the owner, or anyone signed in once the picture has been shared. */
+export function getReadableImage(db: D1Database, userId: string, id: string) {
+  return db
+    .prepare("SELECT * FROM images WHERE id = ? AND (user_id = ? OR first_shared_at IS NOT NULL)")
+    .bind(id, userId)
+    .first<ImageRow>();
 }
 
 export async function readImageBytes(env: Env, row: ImageRow): Promise<Uint8Array | null> {

@@ -338,6 +338,85 @@ describe("admin", () => {
   });
 });
 
+describe("shared library", () => {
+  type Img = { id: string; shared: boolean; everShared: boolean };
+  const share = (cookie: string, id: string, shared: boolean) =>
+    api(`/admin/images/${id}/shared`, { ...json({ shared }), method: "PUT", cookie });
+  const library = async (cookie: string, slot?: string) =>
+    (await (await api(`/shared-images${slot ? `?slot=${slot}` : ""}`, { cookie })).json()) as Img[];
+  const uploadAs = async (cookie: string) => (await (await upload(cookie, PNG)).json()) as Img;
+
+  it("lets only admins share, and only their own pictures", async () => {
+    const own = await uploadAs(teacher);
+    expect((await share(teacher, own.id, true)).status).toBe(403);
+    expect((await share(admin, own.id, true)).status).toBe(404);
+  });
+
+  it("validates the request", async () => {
+    const img = await uploadAs(admin);
+    expect((await api(`/admin/images/${img.id}/shared`, { ...json({}), method: "PUT", cookie: admin })).status).toBe(400);
+    expect((await api("/shared-images?slot=poster", { cookie: teacher })).status).toBe(400);
+  });
+
+  it("offers a shared picture to everyone signed in", async () => {
+    const img = await uploadAs(admin);
+    expect(img).toMatchObject({ shared: false, everShared: false });
+    expect((await api(`/images/${img.id}`, { cookie: teacher })).status).toBe(404);
+
+    const res = await share(admin, img.id, true);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ shared: true, everShared: true });
+
+    expect((await library(teacher)).some((i) => i.id === img.id)).toBe(true);
+    expect((await api(`/images/${img.id}`, { cookie: teacher })).status).toBe(200);
+    const own = (await (await api("/images", { cookie: admin })).json()) as Img[];
+    expect(own.find((i) => i.id === img.id)).toMatchObject({ shared: true, everShared: true });
+    // Still the admin's picture: nobody else can delete it.
+    expect((await api(`/images/${img.id}`, { method: "DELETE", cookie: teacher })).status).toBe(404);
+  });
+
+  it("works as an AI reference for other users", async () => {
+    const img = await uploadAs(admin);
+    await share(admin, img.id, true);
+    await api("/admin/grant", { ...json({ email: "teacher@example.com", amount: 1 }), cookie: admin });
+    const res = await api("/generations", { ...json({ slot: "main", prompt: "", referenceImageId: img.id }), cookie: teacher });
+    expect(res.status).toBe(201);
+  });
+
+  it("keeps an unshared picture readable for sheets that use it", async () => {
+    const img = await uploadAs(admin);
+    await share(admin, img.id, true);
+    const res = await share(admin, img.id, false);
+    expect(await res.json()).toEqual({ shared: false, everShared: true });
+    expect((await library(teacher)).some((i) => i.id === img.id)).toBe(false);
+    expect((await api(`/images/${img.id}`, { cookie: teacher })).status).toBe(200);
+  });
+
+  it("takes a deleted picture away from everyone", async () => {
+    const img = await uploadAs(admin);
+    await share(admin, img.id, true);
+    expect((await api(`/images/${img.id}`, { method: "DELETE", cookie: admin })).status).toBe(204);
+    expect((await library(teacher)).some((i) => i.id === img.id)).toBe(false);
+    expect((await api(`/images/${img.id}`, { cookie: teacher })).status).toBe(404);
+  });
+
+  it("lists pictures by slot, uploads in both", async () => {
+    await api("/admin/grant", { ...json({ email: "admin@example.com", amount: 1 }), cookie: admin });
+    const gen = await api("/generations", { ...json({ slot: "main", prompt: "medvídek" }), cookie: admin });
+    const main = ((await gen.json()) as { image: Img }).image;
+    const upl = await uploadAs(admin);
+    await share(admin, main.id, true);
+    await share(admin, upl.id, true);
+
+    const icons = await library(teacher, "icon");
+    expect(icons.some((i) => i.id === main.id)).toBe(false);
+    expect(icons.some((i) => i.id === upl.id)).toBe(true);
+    const mains = await library(teacher, "main");
+    expect(mains.some((i) => i.id === main.id)).toBe(true);
+    expect(mains.some((i) => i.id === upl.id)).toBe(true);
+  });
+});
+
 describe("scheduled", () => {
   it("refunds generations stuck in pending", async () => {
     const userId = (await env.DB.prepare(`SELECT id FROM "user" WHERE email = 'teacher@example.com'`).first<string>("id"))!;

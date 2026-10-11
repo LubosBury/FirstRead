@@ -3,7 +3,7 @@ import { z } from "zod";
 import { badRequest, notFound, type AppEnv } from "../app";
 import { completeGeneration, failGeneration, getBalance, InsufficientCreditsError, startGeneration } from "../credits";
 import { isAdminEmail } from "../env";
-import { getOwnedImage, publicImage, readImageBytes, saveImage, sniffImageMime } from "../images";
+import { getReadableImage, publicImage, readImageBytes, saveImage, sniffImageMime } from "../images";
 import { ENGINE_IDS } from "../imaging/engines";
 import { buildPrompt } from "../imaging/prompts";
 import { creditCost, resolveEngine } from "../settings";
@@ -43,7 +43,7 @@ generations.post("/generations", async (c) => {
 
   let reference: ImageInput | undefined;
   if (referenceImageId) {
-    const row = await getOwnedImage(c.env.DB, user.id, referenceImageId);
+    const row = await getReadableImage(c.env.DB, user.id, referenceImageId);
     const bytes = row && (await readImageBytes(c.env, row));
     if (!row || !bytes) return notFound(c);
     reference = { bytes, mime: row.mime };
