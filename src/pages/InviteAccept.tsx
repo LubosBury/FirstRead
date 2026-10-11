@@ -33,9 +33,9 @@ export function InviteAccept() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-sm p-7 text-center">
         <div className="mb-6 flex items-center justify-center gap-2 text-2xl font-extrabold text-brand">
-          <BookOpenCheck className="h-7 w-7" /> FirstRead
+          <BookOpenCheck className="h-7 w-7" /> FirstReader
         </div>
-        <p className="font-bold">Máte pozvánku do FirstRead</p>
+        <p className="font-bold">Máte pozvánku do FirstReader</p>
         <p className="mt-2 text-sm text-muted">Pracovní listy pro prvňáčky. Přihlásíte se jedním kliknutím, bez hesla.</p>
         <Button className="mt-6 w-full" onClick={accept} disabled={busy}>
           Přihlásit se
