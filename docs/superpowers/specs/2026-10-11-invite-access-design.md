@@ -52,7 +52,7 @@ Magic-link sign-in stays as it is. No passwords, no social login, no public sign
 
 `worker/app.ts`: `SessionUser` gains `role: string | null`. `requireUser` copies it from the session.
 
-`worker/env.ts`: delete `emailSet`, `isAllowedEmail` and `isAdminEmail`. Admin checks become `user.role === "admin"` in `/me` and in the admin middleware.
+`worker/env.ts`: delete `emailSet`, `isAllowedEmail` and `isAdminEmail`. Admin checks become `user.role === "admin"` (an `isAdmin(user)` helper in `worker/app.ts`) in `/me`, the admin middleware and the engine override in `worker/routes/generations.ts`.
 
 ### 2. Database migration
 
@@ -108,7 +108,7 @@ Locally, without `RESEND_API_KEY`, it is printed to the console like the magic l
 
 - New "Pozvat" card: email input and a submit button. Success and error messages are shown inline.
 - The users table gets a "Stav" column and a row action:
-  - Čeká na přihlášení: "Poslat znovu".
+  - Čeká na přihlášení: "Poslat znovu" and "Odebrat přístup" (to withdraw a mistaken invite).
   - Aktivní: "Odebrat přístup", with a `confirm()` prompt.
   - Bez přístupu: "Vrátit přístup".
   - The admin's own row has no ban action.
@@ -123,14 +123,14 @@ Locally, without `RESEND_API_KEY`, it is printed to the console like the magic l
 
 - Prefill the email field from `?email=`.
 - Show "Odkaz už neplatí nebo byl použitý. Pošlete si nový." when `?error=INVALID_TOKEN` is present. Any other `error` value shows "Přihlášení se nepovedlo. Zkuste to prosím znovu."
-- After reading the parameters, clear them from the URL with `history.replaceState`, so a reload does not show the error again.
+- After reading the parameters, clear them from the URL with react-router's `setSearchParams({}, { replace: true })`, so a reload does not show the error again.
 
 ### 7. First admin and recovery
 
-`scripts/make-admin.mjs`, run as `npm run make-admin -- <email> [--remote]` (default `--local`):
+`scripts/make-admin.ts`, run as `npm run make-admin -- <email> [--remote]` (default `--local`; Node 22.18+ runs TypeScript directly):
 
 - Runs `wrangler d1 execute firstread` with one statement. It inserts the user with `role = 'admin'` and `emailVerified = 0`, or, if the email exists, sets `role = 'admin'` and `banned = 0`.
-- Date columns use the same format Better Auth writes. The implementation verifies the format against a row Better Auth created.
+- The SQL comes from `makeAdminSql(email)` in `worker/make-admin.ts`. It writes what Better Auth writes (lowercased email, ISO timestamps, 0/1 booleans). A worker test runs it against D1 and signs the new admin in, so a broken script can't lock the owner out of production.
 - The same command is the recovery path if the last admin locks themselves out.
 
 ### 8. Removing the env lists
