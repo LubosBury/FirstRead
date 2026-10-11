@@ -46,12 +46,17 @@ export function Home() {
         ) : (
           <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
             {sheets.map((s) => (
-              <li key={s.id} className="flex items-center gap-3 px-4 py-3">
-                <Link to={`/sheets/${s.id}`} className="flex-1 font-semibold hover:text-brand">
-                  {s.title}
+              <li key={s.id} className="flex items-center">
+                <Link to={`/sheets/${s.id}`} className="flex min-w-0 flex-1 items-center gap-3 py-3.5 pl-4 hover:text-brand">
+                  <span className="min-w-0 flex-1 font-semibold">{s.title}</span>
+                  <span className="shrink-0 text-sm text-muted">{dateFmt.format(new Date(s.updatedAt))}</span>
                 </Link>
-                <span className="text-sm text-muted">{dateFmt.format(new Date(s.updatedAt))}</span>
-                <button type="button" aria-label="Smazat list" onClick={() => remove(s)} className="text-muted hover:text-danger">
+                <button
+                  type="button"
+                  aria-label="Smazat list"
+                  onClick={() => remove(s)}
+                  className="mx-1 shrink-0 rounded-lg p-3 text-muted hover:text-danger"
+                >
                   <Trash2 className="h-4 w-4" />
                 </button>
               </li>

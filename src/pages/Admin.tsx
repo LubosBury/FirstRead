@@ -74,7 +74,7 @@ export function Admin() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-      <section>
+      <section className="min-w-0">
         <h1 className="mb-3 text-2xl font-extrabold">Uživatelé</h1>
         {accessMessage && <p className="mb-3 rounded-lg bg-brand-soft px-3 py-2 text-sm text-brand">{accessMessage}</p>}
         {users === null ? (
