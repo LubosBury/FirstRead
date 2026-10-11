@@ -39,7 +39,7 @@ A partial index on `shared_at` serves the library listing.
 ## API
 
 - `GET /api/shared-images?slot=main|icon`: the library, for every signed-in user, newest share first. Without `slot`, everything shared.
-- `PUT /api/admin/images/:id/shared` with `{ shared: boolean }`: admins only (the existing `/admin/*` guard), and only for the admin's own image (404 otherwise). Sharing again keeps the original `shared_at`. Returns the image.
+- `PUT /api/admin/images/:id/shared` with `{ shared: boolean }`: admins only (the existing `/admin/*` guard), and only for the admin's own image (404 otherwise). Sharing again keeps the original `shared_at`. Returns the new `{ shared, everShared }` flags.
 - Read access: `GET /api/images/:id` and the AI reference check in `POST /api/generations` allow the owner, or any image with `first_shared_at` set (`getReadableImage`).
 - Delete stays owner-only and unchanged.
 - The public image shape gains `shared` (listed now) and `everShared` (`first_shared_at` set).
