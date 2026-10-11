@@ -26,7 +26,6 @@ export default defineConfig({
                 APP_URL: "http://localhost",
                 BETTER_AUTH_SECRET: "test-secret-test-secret-test-secret",
                 RESEND_API_KEY: "",
-                ALLOWED_EMAILS: "teacher@example.com,admin@example.com,other@example.com",
                 OPENAI_API_KEY: "test-openai",
                 GEMINI_API_KEY: "test-gemini",
               },

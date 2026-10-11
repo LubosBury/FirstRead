@@ -13,8 +13,8 @@ export class ApiError extends Error {
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api${path}`, { credentials: "same-origin", ...init });
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
-    throw new ApiError(res.status, body.error ?? "error", body.message ?? "Něco se pokazilo. Zkuste to prosím znovu.");
+    const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string; message?: string };
+    throw new ApiError(res.status, body.error ?? body.code ?? "error", body.message ?? "Něco se pokazilo. Zkuste to prosím znovu.");
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;

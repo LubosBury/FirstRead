@@ -24,9 +24,34 @@ beforeAll(async () => {
 
 describe("auth", () => {
   it("refuses to send a link to an address that is not invited", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
     const res = await api("/auth/sign-in/magic-link", json({ email: "stranger@example.com", callbackURL: "/" }));
+    const mailed = log.mock.calls.some((c) => String(c[0]).includes("stranger@example.com"));
+    log.mockRestore();
     expect(res.status).toBe(403);
-    expect(((await res.json()) as { error: string }).error).toBe("not_invited");
+    expect(((await res.json()) as { code: string }).code).toBe("NOT_INVITED");
+    expect(mailed).toBe(false);
+  });
+
+  it("refuses to send a link to a banned user", async () => {
+    await invite("banned@example.com");
+    await env.DB.prepare(`UPDATE "user" SET banned = 1 WHERE email = 'banned@example.com'`).run();
+    const res = await api("/auth/sign-in/magic-link", json({ email: "banned@example.com", callbackURL: "/" }));
+    expect(res.status).toBe(403);
+  });
+
+  it("does not create an account from a link", async () => {
+    const count = () => env.DB.prepare(`SELECT COUNT(*) AS n FROM "user"`).first<number>("n");
+    const before = await count();
+    await api("/auth/sign-in/magic-link", json({ email: "walk-in@example.com", callbackURL: "/" }));
+    expect(await count()).toBe(before);
+  });
+
+  it("keeps the welcome credits when an admin grants credits before the first sign-in", async () => {
+    await invite("early@example.com");
+    expect((await api("/admin/grant", { ...json({ email: "early@example.com", amount: 10 }), cookie: admin })).status).toBe(200);
+    const cookie = await signIn("early@example.com");
+    expect(((await (await api("/me", { cookie })).json()) as { balance: number }).balance).toBe(15);
   });
 
   it("requires a session for the app API", async () => {

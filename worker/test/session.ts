@@ -24,8 +24,9 @@ export const json = (body: unknown): RequestInit => ({
 });
 
 /**
- * Signs in like a person would: request a link, "open the email" (locally the
- * mailer prints it), follow the link, keep the cookies.
+ * Signs in like a person would (the user must be invited first): request a
+ * link, "open the email" (locally the mailer prints it), follow the link, keep
+ * the cookies.
  */
 export async function signIn(email: string): Promise<string> {
   const log = vi.spyOn(console, "log").mockImplementation(() => {});
