@@ -1,4 +1,4 @@
-import { ImagePlus, Library, Loader2, Sparkles, Trash2, Upload, Wand2 } from "lucide-react";
+import { Gift, ImagePlus, Library, Loader2, Sparkles, Trash2, Upload, Wand2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -10,7 +10,7 @@ import { credits } from "@/lib/plural";
 import { cn } from "@/lib/utils";
 
 type Preset = "main" | "icon";
-type Tab = "generate" | "library" | "upload";
+type Tab = "generate" | "library" | "shared" | "upload";
 
 const PLACEHOLDER: Record<Preset, string> = {
   main: "např. medvídek sedí v podzimním listí mezi houbami",
@@ -25,6 +25,53 @@ export function Thumb({ src, className }: { src: string; className?: string }) {
     >
       <img src={src} alt="" loading="lazy" className="h-full w-full object-contain" />
     </div>
+  );
+}
+
+/** A picture that was ever shared may sit on other people's sheets. */
+export function confirmDelete(img: LibraryImage) {
+  return confirm(
+    img.everShared
+      ? "Smazat obrázek? Byl ve sdílené knihovně, takže zmizí i z listů ostatních uživatelů."
+      : "Smazat obrázek? Listy, které ho používají, ho ztratí.",
+  );
+}
+
+function PickGrid({
+  images,
+  empty,
+  onPick,
+  onReference,
+  onDelete,
+}: {
+  images: LibraryImage[] | null;
+  empty: string;
+  onPick: (img: LibraryImage) => void;
+  onReference: (img: LibraryImage) => void;
+  onDelete?: (img: LibraryImage) => void;
+}) {
+  if (images === null) return <Loader2 className="mx-auto my-8 h-6 w-6 animate-spin text-brand" />;
+  if (images.length === 0) return <p className="py-8 text-center text-muted">{empty}</p>;
+  return (
+    <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+      {images.map((img) => (
+        <li key={img.id} className="group relative">
+          <button type="button" onClick={() => onPick(img)} className="block w-full" title={img.label ?? undefined}>
+            <Thumb src={img.url} className="aspect-square w-full group-hover:border-brand" />
+          </button>
+          <div className="mt-1 flex justify-between">
+            <button type="button" className="text-xs font-semibold text-brand hover:underline" onClick={() => onReference(img)}>
+              Předloha pro AI
+            </button>
+            {onDelete && (
+              <button type="button" aria-label="Smazat" className="text-muted hover:text-danger" onClick={() => onDelete(img)}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -50,6 +97,7 @@ export function ImagePicker({
   // Admin-only engine override; "" means the configured default.
   const [engine, setEngine] = useState("");
   const [library, setLibrary] = useState<LibraryImage[] | null>(null);
+  const [shared, setShared] = useState<LibraryImage[] | null>(null);
   const [uploaded, setUploaded] = useState<LibraryImage | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -63,6 +111,11 @@ export function ImagePicker({
       api.images().then(setLibrary, (e) => setError(e.message));
     }
   }, [open, tab, library]);
+
+  // Loaded on open, not on tab click: an empty library hides its tab.
+  useEffect(() => {
+    if (open && shared === null) api.sharedImages(preset).then(setShared, () => setShared([]));
+  }, [open, shared, preset]);
 
   const pick = (img: LibraryImage) => {
     onPick(img);
@@ -109,14 +162,16 @@ export function ImagePicker({
   }
 
   async function remove(img: LibraryImage) {
-    if (!confirm("Smazat obrázek z knihovny? Listy, které ho používají, ho ztratí.")) return;
+    if (!confirmDelete(img)) return;
     await api.deleteImage(img.id);
     setLibrary((l) => l?.filter((i) => i.id !== img.id) ?? null);
+    if (img.shared) setShared(null);
   }
 
   const tabs: { id: Tab; label: string; icon: typeof Sparkles }[] = [
     { id: "generate", label: "Vygenerovat", icon: Sparkles },
     { id: "library", label: "Moje obrázky", icon: Library },
+    ...(shared?.length ? [{ id: "shared" as const, label: "Knihovna zdarma", icon: Gift }] : []),
     { id: "upload", label: "Nahrát vlastní", icon: Upload },
   ];
 
@@ -134,11 +189,11 @@ export function ImagePicker({
               setError(null);
             }}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-semibold",
+              "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-center text-sm leading-tight font-semibold",
               tab === t.id ? "bg-surface shadow-sm" : "text-muted hover:text-ink",
             )}
           >
-            <t.icon className="h-4 w-4" />
+            <t.icon className="hidden h-4 w-4 shrink-0 sm:block" />
             {t.label}
           </button>
         ))}
@@ -225,34 +280,19 @@ export function ImagePicker({
       )}
 
       {tab === "library" && (
-        <div>
-          {library === null ? (
-            <Loader2 className="mx-auto my-8 h-6 w-6 animate-spin text-brand" />
-          ) : library.length === 0 ? (
-            <p className="py-8 text-center text-muted">Zatím tu nic není. Obrázek vygenerujte nebo nahrajte.</p>
-          ) : (
-            <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-              {library.map((img) => (
-                <li key={img.id} className="group relative">
-                  <button type="button" onClick={() => pick(img)} className="block w-full" title={img.label ?? undefined}>
-                    <Thumb src={img.url} className="aspect-square w-full group-hover:border-brand" />
-                  </button>
-                  <div className="mt-1 flex justify-between">
-                    <button
-                      type="button"
-                      className="text-xs font-semibold text-brand hover:underline"
-                      onClick={() => takeAsReference(img)}
-                    >
-                      Předloha pro AI
-                    </button>
-                    <button type="button" aria-label="Smazat" className="text-muted hover:text-danger" onClick={() => remove(img)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+        <PickGrid
+          images={library}
+          empty="Zatím tu nic není. Obrázek vygenerujte nebo nahrajte."
+          onPick={pick}
+          onReference={takeAsReference}
+          onDelete={remove}
+        />
+      )}
+
+      {tab === "shared" && (
+        <div className="space-y-3">
+          <p className="text-sm text-muted">Hotové obrázky pro všechny. Použít je můžete zdarma.</p>
+          <PickGrid images={shared} empty="Knihovna je zatím prázdná." onPick={pick} onReference={takeAsReference} />
         </div>
       )}
 

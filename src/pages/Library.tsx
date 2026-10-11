@@ -1,14 +1,17 @@
 import { ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Thumb } from "@/components/ImagePicker";
+import { confirmDelete, Thumb } from "@/components/ImagePicker";
 import { ImageViewer } from "@/components/ImageViewer";
 import { Button } from "@/components/ui/button";
+import { useMe } from "@/hooks/useMe";
 import { api, ApiError, type LibraryImage } from "@/lib/api";
 import { describeSource } from "@/lib/imageSource";
+import { cn } from "@/lib/utils";
 
 const ORIGIN = { upload: "nahraný", generated: "vygenerovaný" };
 
 export function Library() {
+  const { me } = useMe();
   const [images, setImages] = useState<LibraryImage[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,9 +37,19 @@ export function Library() {
   }
 
   async function remove(img: LibraryImage) {
-    if (!confirm("Smazat obrázek? Listy, které ho používají, ho ztratí.")) return;
+    if (!confirmDelete(img)) return;
     await api.deleteImage(img.id);
     setImages((list) => list?.filter((i) => i.id !== img.id) ?? null);
+  }
+
+  async function toggleShared(img: LibraryImage) {
+    setError(null);
+    try {
+      const flags = await api.setShared(img.id, !img.shared);
+      setImages((list) => list?.map((i) => (i.id === img.id ? { ...i, ...flags } : i)) ?? null);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Sdílení se nepovedlo změnit.");
+    }
   }
 
   return (
@@ -58,6 +71,12 @@ export function Library() {
         Každý vygenerovaný obrázek tu zůstává, takže ho můžete použít znovu bez dalších kreditů. Kliknutím ho otevřete
         ve velkém a můžete ho vytisknout.
       </p>
+      {me?.isAdmin && (
+        <p className="text-sm text-muted">
+          Tlačítkem Sdílet přidáte obrázek do knihovny zdarma, kterou při výběru obrázku vidí všichni přihlášení. Odebráním
+          z knihovny se nic nerozbije, smazáním obrázek zmizí i z cizích listů.
+        </p>
+      )}
       {error && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
       {images === null ? (
         <Loader2 className="h-6 w-6 animate-spin text-brand" />
@@ -81,6 +100,20 @@ export function Library() {
                     </span>
                   )}
                 </span>
+                {me?.isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => toggleShared(img)}
+                    aria-pressed={img.shared}
+                    title={img.shared ? "Je v knihovně zdarma. Kliknutím ho z ní odeberete." : "Přidat do knihovny zdarma pro všechny"}
+                    className={cn(
+                      "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                      img.shared ? "bg-brand-soft text-brand" : "border border-line text-muted hover:text-brand",
+                    )}
+                  >
+                    {img.shared ? "Sdílený" : "Sdílet"}
+                  </button>
+                )}
                 <button type="button" aria-label="Smazat" onClick={() => remove(img)} className="text-muted hover:text-danger">
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
