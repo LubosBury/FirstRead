@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 // 16px text on phones: iOS Safari zooms into any smaller field on focus.
 const field =
-  "w-full rounded-lg border border-line bg-surface px-3 py-2 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 disabled:opacity-60 md:text-sm";
+  "w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 disabled:opacity-60 md:text-sm";
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(field, "h-10", className)} {...props} />;

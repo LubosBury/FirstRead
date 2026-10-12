@@ -8,7 +8,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: "bg-brand text-brand-ink hover:bg-brand/90",
-        secondary: "border border-line bg-surface text-ink hover:bg-canvas",
+        secondary: "border border-line-strong bg-surface text-ink hover:bg-canvas",
         ghost: "text-ink hover:bg-brand-soft",
         danger: "bg-danger text-white hover:bg-danger/90",
         // Apple's guidelines: black, white logo and title, system font.

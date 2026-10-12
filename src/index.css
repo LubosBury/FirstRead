@@ -7,6 +7,8 @@
   --color-ink: #1d2422;
   --color-muted: #66706c;
   --color-line: #e3dfd3;
+  /* Edge of form controls: 3:1 against surface and canvas (WCAG 1.4.11). */
+  --color-line-strong: #8f8a7c;
   --color-brand: #1f6f5c;
   --color-brand-ink: #ffffff;
   --color-brand-soft: #e3f0eb;

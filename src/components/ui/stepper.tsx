@@ -44,7 +44,7 @@ export function Stepper({
   return (
     <div
       className={cn(
-        "flex h-11 overflow-hidden rounded-lg border border-line bg-surface focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 md:h-10",
+        "flex h-11 overflow-hidden rounded-lg border border-line-strong bg-surface focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 md:h-10",
         className,
       )}
     >

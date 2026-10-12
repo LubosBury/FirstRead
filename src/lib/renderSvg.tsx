@@ -80,7 +80,7 @@ function Picture({ el, asset, placeholders }: { el: ImageEl; asset?: Asset; plac
     return el.role === "main" ? (
       <g data-role="main">
         <rect x={el.x} y={el.y} width={el.w} height={el.h} rx={4} fill="#f2efe6" stroke="#b9b3a3" strokeWidth={0.6} strokeDasharray="3 2" />
-        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={5} fill="#8a8473" fontFamily="Nunito">
+        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={5} fill="#6f6a5c" fontFamily="Nunito">
           Hlavní obrázek
         </text>
       </g>
