@@ -15,7 +15,7 @@ export const uniqueEmail = (prefix = "u") => `${prefix}-${crypto.randomUUID()}@e
 
 export async function ledgerRows(userId: string) {
   const { results } = await env.DB.prepare(
-    "SELECT delta, reason, note, generation_id FROM credit_ledger WHERE user_id = ? ORDER BY created_at",
+    "SELECT delta, reason, note, generation_id FROM credit_ledger WHERE user_id = ? ORDER BY created_at, rowid",
   )
     .bind(userId)
     .all<{ delta: number; reason: string; note: string | null; generation_id: string | null }>();

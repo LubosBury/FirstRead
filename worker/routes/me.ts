@@ -27,7 +27,7 @@ me.get("/me", async (c) => {
 me.get("/credits/ledger", async (c) => {
   const { results } = await c.env.DB.prepare(
     `SELECT delta, reason, note, generation_id AS generationId, created_at AS createdAt
-     FROM credit_ledger WHERE user_id = ? ORDER BY created_at DESC LIMIT 50`,
+     FROM credit_ledger WHERE user_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 50`,
   )
     .bind(c.get("user").id)
     .all();

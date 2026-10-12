@@ -74,6 +74,26 @@ describe("/me", () => {
     const me = (await (await api("/me", { cookie: admin })).json()) as { isAdmin: boolean };
     expect(me.isAdmin).toBe(true);
   });
+
+  it("lists the ledger newest first, even for rows written in the same millisecond", async () => {
+    await invite("ledger@example.com");
+    const cookie = await signIn("ledger@example.com");
+    await api("/me", { cookie });
+    const welcome = await env.DB.prepare(
+      `SELECT l.user_id, l.created_at FROM credit_ledger l JOIN "user" u ON u.id = l.user_id WHERE u.email = ?`,
+    )
+      .bind("ledger@example.com")
+      .first<{ user_id: string; created_at: string }>();
+    for (const delta of [-1, -2]) {
+      await env.DB.prepare(
+        "INSERT INTO credit_ledger (id, user_id, delta, reason, created_at) VALUES (?, ?, ?, 'generation', ?)",
+      )
+        .bind(crypto.randomUUID(), welcome!.user_id, delta, welcome!.created_at)
+        .run();
+    }
+    const ledger = (await (await api("/credits/ledger", { cookie })).json()) as { delta: number }[];
+    expect(ledger.map((r) => r.delta)).toEqual([-2, -1, 5]);
+  });
 });
 
 describe("sheets", () => {
