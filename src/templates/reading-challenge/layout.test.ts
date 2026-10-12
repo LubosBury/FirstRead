@@ -135,7 +135,7 @@ describe("day numbers", () => {
   });
 
   it("uses the title font", () => {
-    for (const b of badges(numbered({ font: "fredoka" }))) expect(b.font).toBe("fredoka");
+    for (const b of badges(numbered({ font: "nunito" }))) expect(b.font).toBe("nunito");
   });
 });
 

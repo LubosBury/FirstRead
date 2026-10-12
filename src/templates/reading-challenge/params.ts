@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FONT_IDS } from "@/lib/fonts";
+import { fontIdSchema } from "@/lib/fonts";
 import { czechMonthName, daysInMonth } from "@/lib/months";
 import { randomSeed } from "@/lib/prng";
 
@@ -10,7 +10,7 @@ export const readingChallengeSchema = z.object({
   year: z.number().int().min(2000).max(2100),
   month: z.number().int().min(1).max(12),
   count: z.number().int().min(1).max(62),
-  font: z.enum(FONT_IDS),
+  font: fontIdSchema,
   uppercase: z.boolean(),
   mainImage: z.object({
     imageId: z.string().nullable(),
