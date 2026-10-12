@@ -152,7 +152,8 @@ type Layout = { page: { w: 210; h: 297 }; elements: (TextEl | ImageEl)[] };
 - `title`: defaults to `Čtenářská výzva na {month}`. Czech month names take the same form after "na", so `na říjen` works for every month.
 - `year`, `month`.
 - `count`: defaults to `getDaysInMonth`, can be overridden.
-- `font`: one of 2-3 self-hosted fonts with latin-ext, so diacritics render.
+- `font`: one of four faces self-hosted from `@fontsource`: Andika 700, Nunito 900, Baloo 2 800, Grandstander 800 (`src/lib/fonts.ts`). Every face must draw the whole Czech alphabet, and `src/lib/fonts.test.ts` fails if one lacks a letter.
+- Retired font ids in saved sheets are mapped to a current face on load (`fredoka` opens in Nunito), so old sheets still open.
 - `uppercase`: on/off.
 - `mainImage`: `{ imageId, position: left|center|right, scale }`.
 - `icons`: `imageId[]`. One or more variants, mixed randomly.
