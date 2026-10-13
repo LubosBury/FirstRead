@@ -4,7 +4,7 @@
 interface __BaseEnv_Env {
 	IMAGES: R2Bucket;
 	DB: D1Database;
-	MAIL_FROM: "FirstReader <prihlaseni@product-gnome.com>";
+	MAIL_FROM: "První čtenáři <prihlaseni@prvnictenari.cz>";
 	WELCOME_CREDITS: "5";
 	OPENAI_IMAGE_MODEL: "gpt-image-2";
 	GEMINI_IMAGE_MODEL: "gemini-3.1-flash-image";

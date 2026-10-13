@@ -7,7 +7,7 @@
   "observability": { "enabled": true },
   // One origin: auth cookies and magic links are issued for APP_URL only.
   "workers_dev": false,
-  "routes": [{ "pattern": "product-gnome.com", "custom_domain": true }],
+  "routes": [{ "pattern": "prvnictenari.cz", "custom_domain": true }],
   // The SPA is served as static assets; only /api/* reaches the Worker first.
   "assets": {
     "not_found_handling": "single-page-application",
@@ -28,8 +28,8 @@
   // OPENAI_API_KEY, GEMINI_API_KEY, APPLE_*) go in via `wrangler secret put` in
   // production and `.dev.vars` locally.
   "vars": {
-    "APP_URL": "https://product-gnome.com",
-    "MAIL_FROM": "FirstReader <prihlaseni@product-gnome.com>",
+    "APP_URL": "https://prvnictenari.cz",
+    "MAIL_FROM": "První čtenáři <prihlaseni@prvnictenari.cz>",
     "WELCOME_CREDITS": "5",
     "IMAGE_PROVIDER": "openai",
     "OPENAI_IMAGE_MODEL": "gpt-image-2",

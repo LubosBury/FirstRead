@@ -496,7 +496,7 @@ describe("access", () => {
     log.mockRestore();
 
     expect(res.status).toBe(201);
-    expect(mail).toContain("Pozvánka do FirstReader");
+    expect(mail).toContain("Pozvánka do aplikace První čtenáři");
     expect(mail).toMatch(/http:\/\/localhost\/invite\?token=[A-Za-z0-9]{32}&email=new\.teacher%40example\.com/);
     expect(await row("new.teacher@example.com")).toMatchObject({ emailVerified: false, banned: false });
 
