@@ -4,6 +4,7 @@ import { Navigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { EngineSettings } from "@/components/EngineSettings";
 import { InviteCard } from "@/components/InviteCard";
+import { PackSettings } from "@/components/PackSettings";
 import { Card } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { useMe } from "@/hooks/useMe";
@@ -158,6 +159,7 @@ export function Admin() {
             {message && <p className="text-sm text-muted">{message}</p>}
           </form>
         </Card>
+        <PackSettings />
         <EngineSettings />
       </div>
     </div>

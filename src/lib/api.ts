@@ -30,6 +30,8 @@ export type Me = {
   user: { id: string; email: string; name: string };
   balance: number;
   isAdmin: boolean;
+  /** Whether this deployment sells credits; when false an admin tops people up. */
+  canBuyCredits: boolean;
   costs: { main: number; icon: number };
   /** Only for admins: engines to compare on the same prompt. */
   engines?: EngineOption[];
@@ -68,6 +70,16 @@ export type AdminUser = {
   emailVerified: boolean;
 };
 
+export type CreditPack = { id: string; credits: number; /** Whole koruna. */ priceCzk: number; label: string | null };
+export type AdminCreditPack = CreditPack & { active: boolean };
+export type LedgerEntry = {
+  delta: number;
+  reason: "grant" | "generation" | "refund" | "purchase";
+  note: string | null;
+  generationId: string | null;
+  createdAt: string;
+};
+
 export type LoginMethods = { apple: boolean };
 
 export const api = {
@@ -81,6 +93,11 @@ export const api = {
   acceptInvite: (token: string) => request<{ status: boolean }>("/auth/invite/accept", send("POST", { token })),
 
   me: () => request<Me>("/me"),
+
+  creditPacks: () => request<CreditPack[]>("/credits/packs"),
+  /** Returns the payment page; it sends the browser back to "/credits?status=success" or "…=cancelled". */
+  startCheckout: (packId: string) => request<{ url: string }>("/credits/checkout", send("POST", { packId })),
+  creditLedger: () => request<LedgerEntry[]>("/credits/ledger"),
 
   sheets: () => request<SheetSummary[]>("/sheets"),
   sheet: <P>(id: string) => request<Sheet<P>>(`/sheets/${id}`),
@@ -112,6 +129,8 @@ export const api = {
   saveAdminSettings: (defaultEngine: string | null) => request<EngineSettings>("/admin/settings", send("PUT", { defaultEngine })),
   adminGrant: (email: string, amount: number, note: string) =>
     request<{ balance: number }>("/admin/grant", send("POST", { email, amount, note })),
+  adminPacks: () => request<AdminCreditPack[]>("/admin/packs"),
+  saveAdminPack: ({ id, ...pack }: AdminCreditPack) => request<unknown>(`/admin/packs/${id}`, send("PUT", pack)),
   adminInvite: (email: string) => request<{ email: string; resent: boolean }>("/admin/invites", send("POST", { email })),
   adminBan: (id: string) => request<void>(`/admin/users/${id}/ban`, { method: "POST" }),
   adminUnban: (id: string) => request<void>(`/admin/users/${id}/unban`, { method: "POST" }),
