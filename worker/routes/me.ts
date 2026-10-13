@@ -3,6 +3,7 @@ import { isAdmin, type AppEnv } from "../app";
 import { ensureWallet, getBalance } from "../credits";
 import { intVar } from "../env";
 import { engineOptions } from "../imaging/engines";
+import { getPaymentProvider } from "../payments/provider";
 import { creditCost, resolveEngine } from "../settings";
 
 export const me = new Hono<AppEnv>();
@@ -19,6 +20,8 @@ me.get("/me", async (c) => {
     isAdmin: admin,
     // What the next image costs on the current default engine.
     costs: { main: creditCost(c.env, engine, "main"), icon: creditCost(c.env, engine, "icon") },
+    // Lets the UI hide buying when no payment provider is configured.
+    canBuyCredits: getPaymentProvider(c.env) !== null,
     // Admins can compare engines on the same prompt; everyone else gets the default.
     ...(admin && { engines: engineOptions(), defaultEngine: engine }),
   });

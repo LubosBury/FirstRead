@@ -3,10 +3,12 @@ import { requireUser, type AppEnv } from "./app";
 import { appleEnabled, getAuth } from "./auth";
 import { refundStaleGenerations } from "./credits";
 import { admin } from "./routes/admin";
+import { credits } from "./routes/credits";
 import { generations } from "./routes/generations";
 import { images } from "./routes/images";
 import { me } from "./routes/me";
 import { sheets } from "./routes/sheets";
+import { stripeWebhook } from "./routes/stripe-webhook";
 
 const app = new Hono<AppEnv>().basePath("/api");
 
@@ -17,12 +19,16 @@ app.get("/login-methods", async (c) => c.json({ apple: await appleEnabled(c.env)
 
 app.on(["GET", "POST"], "/auth/*", async (c) => (await getAuth(c.env)).handler(c.req.raw));
 
+// Stripe calls this without a session; the signature is the authentication.
+app.route("/", stripeWebhook);
+
 const authed = new Hono<AppEnv>();
 authed.use("*", requireUser);
 authed.route("/", me);
 authed.route("/", sheets);
 authed.route("/", images);
 authed.route("/", generations);
+authed.route("/", credits);
 authed.route("/", admin);
 app.route("/", authed);
 
