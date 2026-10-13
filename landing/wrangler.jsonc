@@ -1,0 +1,11 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  // Static landing page on the bare domain. The app itself lives on
+  // app.prvnictenari.cz (see ../wrangler.jsonc). Deploy the app first, so the
+  // bare domain is free when this Worker claims it.
+  "name": "prvnictenari-landing",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "routes": [{ "pattern": "prvnictenari.cz", "custom_domain": true }],
+  "assets": { "directory": "./public" }
+}

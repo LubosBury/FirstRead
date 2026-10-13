@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>První čtenáři - pracovní listy pro prvňáčky</title>
+    <meta name="description" content="Měsíční čtenářská výzva pro prvňáčky za pár minut. Obrázky k vybarvení vygeneruje AI nebo nahrajete vlastní, vytisknete na A4." />
+    <meta property="og:title" content="První čtenáři" />
+    <meta property="og:description" content="Pracovní listy pro prvňáčky za pár minut." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://prvnictenari.cz/" />
+    <meta name="theme-color" content="#f7f5ef" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preload" href="/fonts/nunito-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <style>
+      /* Same tokens as the app (src/index.css), so the jump to the app feels seamless. */
+      @font-face { font-family: "Nunito"; font-weight: 400; font-display: swap; src: url(/fonts/nunito-latin-400-normal.woff2) format("woff2");
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: "Nunito"; font-weight: 400; font-display: swap; src: url(/fonts/nunito-latin-ext-400-normal.woff2) format("woff2");
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+      @font-face { font-family: "Nunito"; font-weight: 800; font-display: swap; src: url(/fonts/nunito-latin-800-normal.woff2) format("woff2");
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: "Nunito"; font-weight: 800; font-display: swap; src: url(/fonts/nunito-latin-ext-800-normal.woff2) format("woff2");
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
+      :root {
+        --canvas: #f7f5ef;
+        --surface: #ffffff;
+        --ink: #1d2422;
+        --muted: #66706c;
+        --line: #e3dfd3;
+        --brand: #1f6f5c;
+        --brand-soft: #e3f0eb;
+      }
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; }
+      body {
+        margin: 0;
+        background: var(--canvas);
+        color: var(--ink);
+        font: 400 1.0625rem/1.6 "Nunito", ui-sans-serif, system-ui, sans-serif;
+      }
+      a { color: inherit; }
+      .wrap { max-width: 68rem; margin: 0 auto; padding: 0 1rem; }
+
+      header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 1rem; padding-bottom: 1rem; }
+      .logo { display: flex; align-items: center; gap: 0.5rem; font-weight: 800; font-size: 1.125rem; text-decoration: none; }
+      .logo img { width: 2rem; height: 2rem; }
+
+      .btn {
+        display: inline-block; border-radius: 0.625rem; padding: 0.75rem 1.25rem;
+        font-weight: 800; text-decoration: none; white-space: nowrap;
+        background: var(--brand); color: #fff;
+      }
+      .btn:hover { background: #185a4a; }
+      .btn:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+      .btn.ghost { background: transparent; color: var(--brand); border: 2px solid var(--brand); padding: 0.5rem 1rem; }
+      .btn.ghost:hover { background: var(--brand-soft); }
+
+      .hero .wrap { display: grid; gap: 2.5rem; align-items: center; padding-top: 2rem; padding-bottom: 3rem; }
+      @media (min-width: 52rem) { .hero .wrap { grid-template-columns: 1.1fr 0.9fr; padding-top: 3.5rem; padding-bottom: 5rem; } }
+      h1 { font-weight: 800; font-size: clamp(2rem, 5vw, 3.25rem); line-height: 1.1; margin: 0 0 1rem; letter-spacing: -0.01em; }
+      .lead { font-size: 1.1875rem; color: var(--muted); margin: 0 0 1.75rem; max-width: 34rem; }
+      .note { margin: 1rem 0 0; font-size: 0.9375rem; color: var(--muted); }
+
+      /* A small model of the reading-challenge sheet: header, day pictures, main picture at the bottom. */
+      .sheet {
+        position: relative; width: 100%; max-width: 22rem; margin: 0 auto; aspect-ratio: 210 / 297;
+        background: var(--surface); border: 1px solid var(--line); border-radius: 0.5rem;
+        box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px rgb(29 36 34 / 0.08);
+        transform: rotate(-1.5deg);
+      }
+      .sheet-title { position: absolute; top: 5%; left: 0; right: 0; text-align: center; font-weight: 800; font-size: clamp(0.9rem, 3.4vw, 1.2rem); }
+      .day {
+        position: absolute; width: 11%; aspect-ratio: 1; display: grid; place-items: center;
+        border: 1.5px solid var(--ink); border-radius: 50%;
+        font-weight: 800; font-size: clamp(0.55rem, 1.9vw, 0.8rem); color: var(--ink);
+      }
+      .day.done { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); }
+      .main-pic { position: absolute; left: 22%; right: 22%; bottom: 5%; height: 24%; }
+      .main-pic svg { width: 100%; height: 100%; }
+
+      section.steps { background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      section.steps .wrap { padding-top: 3rem; padding-bottom: 3rem; }
+      h2 { font-weight: 800; font-size: 1.75rem; margin: 0 0 1.5rem; }
+      ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.25rem; }
+      @media (min-width: 52rem) { ol { grid-template-columns: repeat(3, 1fr); gap: 2rem; } }
+      ol li { display: flex; gap: 0.875rem; }
+      .num {
+        flex: none; width: 2.25rem; height: 2.25rem; border-radius: 50%; display: grid; place-items: center;
+        background: var(--brand-soft); color: var(--brand); font-weight: 800;
+      }
+      ol h3 { margin: 0.25rem 0 0.25rem; font-size: 1.125rem; font-weight: 800; }
+      ol p { margin: 0; color: var(--muted); }
+
+      .cta .wrap { padding-top: 3rem; padding-bottom: 3rem; text-align: center; }
+      .cta p { color: var(--muted); margin: 0 0 1.5rem; }
+
+      footer .wrap { padding-top: 1.5rem; padding-bottom: 2rem; color: var(--muted); font-size: 0.875rem; border-top: 1px solid var(--line); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap">
+        <a class="logo" href="/"><img src="/favicon.svg" alt="" /> První čtenáři</a>
+        <a class="btn ghost" href="https://app.prvnictenari.cz/">Přihlásit se</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="wrap">
+          <div>
+            <h1>Pracovní listy pro prvňáčky za pár minut</h1>
+            <p class="lead">
+              Měsíční čtenářská výzva na jednu stránku A4. Za každý přečtený den si děti vybarví obrázek.
+              Obrázky vám nakreslí AI, nebo nahrajete vlastní.
+            </p>
+            <a class="btn" href="https://app.prvnictenari.cz/">Přihlásit se</a>
+            <p class="note">Zatím jen na pozvánku.</p>
+          </div>
+
+          <div class="sheet" role="img" aria-label="Ukázka listu: nadpis, očíslované obrázky na každý den a velký obrázek dole">
+            <div class="sheet-title">Čtenářská výzva · listopad</div>
+            <span class="day done" style="top:16%;left:9%">7</span>
+            <span class="day done" style="top:15%;left:31%">22</span>
+            <span class="day done" style="top:17%;left:56%">3</span>
+            <span class="day" style="top:15%;left:79%">15</span>
+            <span class="day" style="top:28%;left:18%">11</span>
+            <span class="day" style="top:27%;left:43%">28</span>
+            <span class="day done" style="top:29%;left:68%">1</span>
+            <span class="day" style="top:40%;left:7%">19</span>
+            <span class="day" style="top:39%;left:30%">5</span>
+            <span class="day" style="top:41%;left:55%">26</span>
+            <span class="day" style="top:39%;left:80%">9</span>
+            <span class="day" style="top:52%;left:16%">30</span>
+            <span class="day" style="top:51%;left:41%">13</span>
+            <span class="day" style="top:53%;left:66%">17</span>
+            <span class="day" style="top:63%;left:6%">24</span>
+            <span class="day" style="top:64%;left:81%">2</span>
+            <div class="main-pic">
+              <svg viewBox="0 0 120 70" fill="none" stroke="#1d2422" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+                <path d="M60 18c-12-8-30-9-46-5v48c16-4 34-3 46 5 12-8 30-9 46-5V13c-16-4-34-3-46 5z" />
+                <path d="M60 18v48" />
+                <path d="M24 27c8-2 17-1 26 3M24 37c8-2 17-1 26 3M24 47c8-2 17-1 26 3" />
+                <path d="M70 30c9-4 18-5 26-3M70 40c9-4 18-5 26-3M70 50c9-4 18-5 26-3" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="steps">
+        <div class="wrap">
+          <h2>Jak to funguje</h2>
+          <ol>
+            <li>
+              <span class="num">1</span>
+              <div>
+                <h3>Zvolíte měsíc a nadpis</h3>
+                <p>List má správný počet dní. Obrázky můžete očíslovat v náhodném pořadí, ať děti hledají.</p>
+              </div>
+            </li>
+            <li>
+              <span class="num">2</span>
+              <div>
+                <h3>Přidáte obrázky</h3>
+                <p>Popíšete, co chcete, a AI nakreslí omalovánku. Nebo nahrajete vlastní obrázek.</p>
+              </div>
+            </li>
+            <li>
+              <span class="num">3</span>
+              <div>
+                <h3>Vytisknete</h3>
+                <p>Hotový list na A4, připravený do třídy.</p>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="cta">
+        <div class="wrap">
+          <h2>Máte pozvánku?</h2>
+          <p>Přihlásíte se e-mailem, bez hesla.</p>
+          <a class="btn" href="https://app.prvnictenari.cz/">Přihlásit se</a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">© 2026 První čtenáři</div>
+    </footer>
+  </body>
+</html>
