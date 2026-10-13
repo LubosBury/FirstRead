@@ -16,10 +16,10 @@ const SIGN_IN_ERRORS: Record<string, string | null> = {
   user_cancelled_authorize: null,
   NOT_INVITED: "E-mail vašeho Apple účtu nemá pozvánku. Přihlaste se e-mailem, na který pozvánka přišla.",
   APPLE_PRIVATE_EMAIL:
-    "Apple před námi skryl váš e-mail, takže nepoznáme vaši pozvánku. Přihlaste se e-mailem, nebo v nastavení Apple účtu u FirstReader ukončete přihlašování přes Apple a příště zvolte „Sdílet můj e-mail“.",
+    "Apple před námi skryl váš e-mail, takže nepoznáme vaši pozvánku. Přihlaste se e-mailem, nebo v nastavení Apple účtu u aplikace První čtenáři ukončete přihlašování přes Apple a příště zvolte „Sdílet můj e-mail“.",
   // An invited account whose mailbox isn't proven yet; Better Auth won't link Apple to it.
   account_not_linked: "Poprvé se přihlaste odkazem z pozvánky nebo z e-mailu. Pak už půjde i Apple.",
-  BANNED_USER: "Přístup k FirstReader vám byl odebrán.",
+  BANNED_USER: "Přístup k aplikaci První čtenáři vám byl odebrán.",
 };
 
 function AppleLogo() {
@@ -82,7 +82,7 @@ export function Login() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-sm p-7">
         <div className="mb-6 flex items-center gap-2 text-2xl font-extrabold text-brand">
-          <BookOpenCheck className="h-7 w-7" /> FirstReader
+          <BookOpenCheck className="h-7 w-7" /> První čtenáři
         </div>
         {sent ? (
           <div className="space-y-3 text-center">

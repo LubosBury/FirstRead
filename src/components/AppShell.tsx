@@ -33,7 +33,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur print:hidden">
         <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-2">
           <Link to="/" className="mr-3 flex items-center gap-2 text-lg font-extrabold text-brand">
-            <BookOpenCheck className="h-6 w-6" /> FirstReader
+            <BookOpenCheck className="h-6 w-6" /> První čtenáři
           </Link>
           <nav className="hidden gap-1 md:flex">
             {links.map((l) => (
