@@ -112,7 +112,7 @@ describe("/me canBuyCredits", () => {
   });
 
   it("never offers the mock on a real domain", () => {
-    expect(getPaymentProvider({ ...MOCK, APP_URL: "https://product-gnome.com" })).toBeNull();
+    expect(getPaymentProvider({ ...MOCK, APP_URL: "https://app.prvnictenari.cz" })).toBeNull();
   });
 });
 

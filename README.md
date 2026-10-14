@@ -55,6 +55,7 @@ npm test            # app unit tests (jsdom) + Worker integration tests (workerd
 | `OPENAI_IMAGE_MODEL` / `GEMINI_IMAGE_MODEL` | Model IDs. **Verify against the providers' current model lists before going live**; image model names change often. |
 | `IMAGE_QUALITY` | OpenAI `low` / `medium` / `high`. |
 | `CREDIT_COST_MAIN` / `CREDIT_COST_ICON` | Credits per generated main picture / repeated picture. |
+| `PAYMENT_PROVIDER` | `stripe`, `mock` or empty. Buying credits shows only when the provider is usable: Stripe needs both Stripe secrets, the mock (credits at once, no payment) works only on localhost. |
 
 **Secrets** are set with `npx wrangler secret put NAME` in production, and in `.dev.vars` locally:
 
@@ -64,6 +65,7 @@ npm test            # app unit tests (jsdom) + Worker integration tests (workerd
 | `RESEND_API_KEY` | Sends the sign-in emails. |
 | `OPENAI_API_KEY` / `GEMINI_API_KEY` | Whichever provider is active. |
 | `APPLE_CLIENT_ID` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY` | Optional. Sign in with Apple, see below. The button shows only when all four are set. |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Optional. Buying credits, see below. Hidden until both are set. |
 
 ## Access
 
@@ -100,6 +102,30 @@ How it behaves:
 - **Hide My Email:** Apple can hand out a relay address (`…@privaterelay.appleid.com`) instead of the real one. It never matches an invite, so the sign-in page explains how to share the real email instead.
 - **Local development:** Apple does not accept `localhost` return URLs, so Apple sign-in can only be tried on a real HTTPS domain. Locally, leave the four values empty and the button stays hidden.
 - **Adoption:** `SELECT COUNT(DISTINCT userId) FROM account WHERE providerId = 'apple'` counts teachers who have used Apple at least once.
+
+## Buying credits (Stripe)
+
+Teachers buy one of three credit packs at `/credits` through Stripe Checkout (CZK, Czech page). Admins edit the packs' credits, price and label in `/admin`; there are always exactly three. Spec: `docs/superpowers/specs/2026-10-13-credit-purchase-design.md`.
+
+Setup, test mode first:
+
+1. In the Stripe dashboard, add a webhook endpoint `https://app.prvnictenari.cz/api/stripe/webhook` for the events `checkout.session.completed` and `checkout.session.async_payment_succeeded`. Copy its signing secret (`whsec_...`).
+2. Set the secrets:
+
+```bash
+npx wrangler secret put STRIPE_SECRET_KEY
+npx wrangler secret put STRIPE_WEBHOOK_SECRET
+```
+
+3. Buy a pack with a [test card](https://docs.stripe.com/testing) and check that the balance and a ledger row with reason `purchase` appear.
+4. For live payments, check that CZK and the wanted payment methods are enabled, set the real prices in `/admin`, then replace both secrets with the live key and a live-mode endpoint's signing secret.
+
+How it behaves:
+
+- **Crediting:** credits land when the webhook arrives, which can be a moment after the teacher is back at `/credits?status=success`; the page refetches the balance. A replayed webhook never credits twice (one `credit_purchases` row per Checkout session).
+- **Prices:** whole koruna, at least 15 Kč (Stripe's minimum CZK charge).
+- **Refunds:** refunding in Stripe does **not** take the credits back. Remove them by hand in `/admin` if needed.
+- **Local development:** `PAYMENT_PROVIDER=mock` in `.dev.vars` credits at once without paying. To try real Stripe locally, use test keys and the `whsec_...` printed by `stripe listen --forward-to localhost:5173/api/stripe/webhook`.
 
 ## Production
 

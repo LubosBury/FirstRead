@@ -21,7 +21,7 @@ export function createStripePayments(opts: { secretKey: string; fetch: typeof fe
         "line_items[0][price_data][currency]": "czk",
         // CZK is a two-decimal currency for Stripe: the amount is in haléře.
         "line_items[0][price_data][unit_amount]": String(pack.priceCzk * 100),
-        "line_items[0][price_data][product_data][name]": `FirstReader: ${pack.credits} kreditů`,
+        "line_items[0][price_data][product_data][name]": `První čtenáři: ${pack.credits} kreditů`,
         // What the webhook credits: fixed now, whatever happens to the pack later.
         "metadata[pack_id]": pack.id,
         "metadata[credits]": String(pack.credits),
