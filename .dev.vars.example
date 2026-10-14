@@ -7,6 +7,13 @@ RESEND_API_KEY=
 IMAGE_PROVIDER=mock
 OPENAI_API_KEY=
 GEMINI_API_KEY=
+# Buying credits: mock | stripe. The mock credits at once without payment and
+# only works on localhost. For Stripe use test keys (sk_test_..., and the
+# whsec_... that `stripe listen --forward-to localhost:5173/api/stripe/webhook`
+# prints). Never put live keys here.
+PAYMENT_PROVIDER=mock
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
 # Sign in with Apple. Leave empty to hide the button. Apple does not accept
 # localhost return URLs, so this only works on a real HTTPS domain.
 APPLE_CLIENT_ID=
