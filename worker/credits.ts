@@ -7,6 +7,8 @@
  * is the overdraw guard: a debit the balance can't cover fails the whole batch.
  */
 
+import { packNote, type PaidCheckout } from "./payments/provider";
+
 export class InsufficientCreditsError extends Error {
   constructor() {
     super("Nedostatek kreditů");
@@ -161,4 +163,41 @@ export async function grantCredits(
     throw e;
   }
   return getBalance(db, g.userId);
+}
+
+/**
+ * Credits a paid checkout exactly once. The purchase row is keyed by the
+ * checkout session, and the ledger row is selected from it by this call's
+ * `ledger_id`, so a replayed or concurrent webhook finds the old row and
+ * writes nothing. Returns whether this call credited.
+ */
+export async function creditPurchase(db: D1Database, provider: string, p: PaidCheckout): Promise<boolean> {
+  // The wallet normally exists already (checkout opens it); this covers the rest.
+  await ensureWallet(db, p.userId, 0);
+  const ledgerId = crypto.randomUUID();
+  const at = now();
+  const [, ledger] = await db.batch([
+    db
+      .prepare(
+        `INSERT OR IGNORE INTO credit_purchases
+           (session_id, provider, user_id, pack_id, credits, amount_czk, ledger_id, event_id, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+      )
+      .bind(p.sessionId, provider, p.userId, p.packId, p.credits, p.amountCzk, ledgerId, p.eventId, at),
+    db
+      .prepare(
+        `INSERT INTO credit_ledger (id, user_id, delta, reason, note, created_by, created_at)
+         SELECT ledger_id, user_id, credits, 'purchase', ?1, provider, created_at FROM credit_purchases
+         WHERE session_id = ?2 AND ledger_id = ?3`,
+      )
+      .bind(packNote(p), p.sessionId, ledgerId),
+    // Credits the wallet only if the ledger row above was just written.
+    db
+      .prepare(
+        `UPDATE wallets SET balance = balance + (SELECT delta FROM credit_ledger WHERE id = ?1), updated_at = ?2
+         WHERE user_id = (SELECT user_id FROM credit_ledger WHERE id = ?1)`,
+      )
+      .bind(ledgerId, at),
+  ]);
+  return ledger.meta.changes === 1;
 }

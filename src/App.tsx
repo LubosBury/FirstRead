@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { AppShell } from "@/components/AppShell";
 import { MeProvider, useMe } from "@/hooks/useMe";
 import { Admin } from "@/pages/Admin";
+import { Credits } from "@/pages/Credits";
 import { Home } from "@/pages/Home";
 import { InviteAccept } from "@/pages/InviteAccept";
 import { Library } from "@/pages/Library";
@@ -27,6 +28,7 @@ function Gate() {
         <Route path="/sheets/new/:templateId" element={<SheetEditor />} />
         <Route path="/sheets/:id" element={<SheetEditor />} />
         <Route path="/library" element={<Library />} />
+        <Route path="/credits" element={<Credits />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

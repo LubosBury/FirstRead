@@ -7,6 +7,7 @@ import { grantCredits, InsufficientCreditsError } from "../credits";
 import { getOwnedImage, type ImageRow } from "../images";
 import { ENGINE_IDS, engineOptions } from "../imaging/engines";
 import { inviteMail, sendMail } from "../mail";
+import { getPack, listPacks, updatePack } from "../packs";
 import { resolveEngine, setDefaultEngine } from "../settings";
 
 export const admin = new Hono<AppEnv>();
@@ -119,6 +120,30 @@ admin.put("/admin/settings", async (c) => {
   if (!parsed.success) return badRequest(c, "Neznámý model.");
   await setDefaultEngine(c.env.DB, parsed.data.defaultEngine, c.get("user").email);
   return c.json(await settings(c));
+});
+
+admin.get("/admin/packs", async (c) => c.json(await listPacks(c.env.DB)));
+
+const packBody = z.object({
+  credits: z.number().int().min(1).max(10_000),
+  // Stripe refuses charges under 15 Kč.
+  priceCzk: z.number().int().min(15).max(100_000),
+  label: z
+    .string()
+    .trim()
+    .max(40)
+    .nullable()
+    .transform((s) => s || null),
+  active: z.boolean(),
+});
+
+/** The three packs are fixed; admins change what they hold and cost. */
+admin.put("/admin/packs/:id", async (c) => {
+  const parsed = packBody.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return badRequest(c, "Zadejte počet kreditů (1 až 10 000), cenu (15 až 100 000 Kč) a název do 40 znaků.");
+  const id = c.req.param("id");
+  if (!(await updatePack(c.env.DB, id, parsed.data, c.get("user").email))) return notFound(c);
+  return c.json(await getPack(c.env.DB, id));
 });
 
 const shareBody = z.object({ shared: z.boolean() });

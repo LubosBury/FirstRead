@@ -1,6 +1,6 @@
-import { Gift, ImagePlus, Library, Loader2, Sparkles, Trash2, Upload, Wand2 } from "lucide-react";
+import { Coins, Gift, ImagePlus, Library, Loader2, Sparkles, Trash2, Upload, Wand2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Label, Select, Textarea } from "@/components/ui/input";
 import { useMe } from "@/hooks/useMe";
@@ -281,10 +281,20 @@ export function ImagePicker({
               {busy ? "Kreslím, může to chvíli trvat…" : `Vygenerovat · ${credits(cost)}`}
             </Button>
           )}
-          <p className="text-center text-xs text-muted">
-            Zůstatek: {credits(balance)}
-            {short && " · na další obrázek nestačí, požádejte správce o doplnění."}
-          </p>
+          {short && me?.canBuyCredits ? (
+            <div className="space-y-2 text-center">
+              <p className="text-sm text-muted">Zůstatek: {credits(balance)} · na další obrázek nestačí.</p>
+              {/* A full page load on purpose: an unsaved sheet gets the browser's leave warning. */}
+              <a href="/credits" className={cn(buttonVariants({ variant: "secondary" }), "h-11 md:h-10")}>
+                <Coins className="h-4 w-4" /> Dobít kredity
+              </a>
+            </div>
+          ) : (
+            <p className="text-center text-xs text-muted">
+              Zůstatek: {credits(balance)}
+              {short && " · na další obrázek nestačí, požádejte správce o doplnění."}
+            </p>
+          )}
         </div>
       )}
 
