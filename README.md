@@ -120,9 +120,10 @@ R2 must be enabled once per account in the dashboard (R2 Object Storage) before 
 5. In `wrangler.jsonc`, set `APP_URL` and `MAIL_FROM` for the real domain.
 6. Set the secrets from the table above (`npx wrangler secret put ...`).
 7. **Resend:** add and verify the sending domain (it adds SPF/DKIM DNS records), then use an address on it in `MAIL_FROM`.
-8. **Deploy:** run `npm run deploy`. Or connect the repo in Workers Builds with:
-   - Build command: `npm run build`
-   - Deploy command: `npx wrangler deploy`
+8. **Deploy:** every green push to `main` deploys automatically (the `deploy` job in `.github/workflows/ci.yml`: remote D1 migrations, then the app, then the landing page). It needs two GitHub Actions secrets:
+   - `CLOUDFLARE_API_TOKEN`: "Edit Cloudflare Workers" template plus D1 Edit.
+   - `CLOUDFLARE_ACCOUNT_ID`.
+   By hand, in the same order: `npm run db:migrate:remote && npm run deploy && npm run deploy:landing`.
 9. **Custom domain:** the domain's DNS zone must be on Cloudflare. If it isn't:
    - Copy every existing record first (website A/CNAME, MX, mail TXT), then switch the nameservers.
    - Then go to Workers → `firstread` → Settings → Domains & Routes → Add → Custom domain.
