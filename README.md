@@ -105,7 +105,7 @@ How it behaves:
 
 - **URL:** https://app.prvnictenari.cz (Workers custom domain; `workers_dev` is off so there is one origin for auth).
 - **Resources:** D1 `firstread` (WEUR), R2 `firstread-images` (WEUR), cron `*/15 * * * *`.
-- **Sender:** `prihlaseni@prvnictenari.cz`. The domain must be verified in Resend before deploying. The old domain `product-gnome.com` 301-redirects to the app (Cloudflare redirect rule).
+- **Sender:** `prihlaseni@prvnictenari.cz`. The domain must be verified in Resend before deploying.
 - **Landing page:** https://prvnictenari.cz is a separate static Worker (`landing/`, no build step). Deploy with `npm run deploy:landing`, after the app, so the bare domain is free.
 - **Secrets:** `BETTER_AUTH_SECRET` is set. The rest go in the dashboard: Workers → firstread → Settings → Variables and Secrets.
 
