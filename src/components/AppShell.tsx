@@ -25,6 +25,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const links = [
     { to: "/", label: "Moje listy", icon: Files, end: true },
     { to: "/library", label: "Obrázky", icon: Images, end: false },
+    ...(me?.canBuyCredits ? [{ to: "/credits", label: "Kredity", icon: Coins, end: false }] : []),
     ...(me?.isAdmin ? [{ to: "/admin", label: "Správa", icon: Settings, end: false }] : []),
   ];
 
@@ -44,13 +45,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
           <div className="ml-auto flex items-center gap-1">
             {me && (
-              <span
-                className="flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-sm font-bold text-brand"
-                title="Kredity na generování obrázků"
-                data-testid="credit-badge"
-              >
-                <Coins className="h-4 w-4" /> {credits(me.balance)}
-              </span>
+              <Link to="/credits" className="group flex min-h-11 items-center md:min-h-0" title="Kredity a jejich historie" data-testid="credit-badge">
+                <span className="flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-sm font-bold text-brand group-hover:underline">
+                  <Coins className="h-4 w-4" /> {credits(me.balance)}
+                </span>
+              </Link>
             )}
             <button type="button" onClick={signOut} className="rounded-lg p-2.5 text-muted hover:bg-canvas" aria-label="Odhlásit se" title="Odhlásit se">
               <LogOut className="h-4 w-4" />
